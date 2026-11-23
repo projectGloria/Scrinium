@@ -3,6 +3,9 @@
 mod migrations;
 pub mod repos;
 pub mod state;
+pub mod content;
+pub mod actions;
+pub mod search;
 
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};

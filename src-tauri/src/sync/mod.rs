@@ -1,6 +1,6 @@
 //! Background sync: GitHub -> SQLite. The UI never waits on it; it only hears about changes.
 
-mod jobs;
+pub mod jobs;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -22,11 +22,31 @@ const REPOS_KEY: &str = "repos";
 pub struct SyncEngine {
     trigger: Notify,
     running: AtomicBool,
+    /// The icon scan runs detached from the repo sync; this keeps two from overlapping.
+    icons_running: Arc<AtomicBool>,
 }
 
 impl SyncEngine {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self { trigger: Notify::new(), running: AtomicBool::new(false) })
+        Arc::new(Self {
+            trigger: Notify::new(),
+            running: AtomicBool::new(false),
+            icons_running: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    /// Looks for repo icons in the background (never holds up the sync status).
+    fn spawn_icons(&self, app: &AppHandle, db: &Arc<Db>, gh: &Arc<ReadApi>) {
+        if self.icons_running.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let (flag, app, db, gh) = (self.icons_running.clone(), app.clone(), db.clone(), gh.clone());
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = jobs::icons::run(&app, &db, &gh).await {
+                eprintln!("[icons] stopped: {e}");
+            }
+            flag.store(false, Ordering::SeqCst);
+        });
     }
 
     /// Ask for a sync now. The first call (from `app_ready`, after first paint) starts the loop.
@@ -67,7 +87,7 @@ impl SyncEngine {
         });
     }
 
-    async fn run_once(&self, app: &AppHandle, db: &Db, gh: &ReadApi) -> Outcome {
+    async fn run_once(&self, app: &AppHandle, db: &Arc<Db>, gh: &Arc<ReadApi>) -> Outcome {
         match crate::auth::ensure_token(gh).await {
             Ok(true) => {}
             _ => return Outcome::Done, // signed out: nothing to sync until a kick
@@ -79,6 +99,7 @@ impl SyncEngine {
         match &result {
             Ok(()) => {
                 let _ = state::sync_success(&db.write(), REPOS_KEY, db::now());
+                self.spawn_icons(app, db, gh);
             }
             Err(e) => {
                 eprintln!("[sync] repos failed: {e}");

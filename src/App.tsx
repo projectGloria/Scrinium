@@ -12,6 +12,8 @@ import { Sidebar } from "./features/repos/Sidebar";
 import { RepoSwitcher } from "./features/repos/RepoSwitcher";
 import { RepoView } from "./features/repos/RepoView";
 import { Home } from "./features/repos/Home";
+import { Palette } from "./features/palette/Palette";
+import { RunDialog } from "./features/actions/RunDialog";
 
 export function App() {
   const status = useSession((s) => s.status);
@@ -36,6 +38,8 @@ function Workspace() {
         {route.kind === "repo" ? <RepoView repoId={route.repoId} /> : <Home />}
       </main>
       <RepoSwitcher />
+      <Palette />
+      <RunDialog />
     </div>
   );
 }

@@ -58,14 +58,14 @@ function Logo() {
 }
 
 function SwitcherButton() {
-  const open = useUi((s) => s.setSwitcherOpen);
+  const open = useUi((s) => s.setPaletteOpen);
   return (
     <button
       onClick={() => open(true)}
       className="t-fast flex h-6 w-[340px] items-center gap-2 rounded-md border border-line bg-bg px-2 text-[12px] text-subtle hover:border-line-strong hover:text-muted"
     >
       <SearchIcon size={12} />
-      <span className="flex-1 text-left">Switch repository…</span>
+      <span className="flex-1 text-left">Search or run a command…</span>
       <Kbd>Ctrl</Kbd>
       <Kbd>K</Kbd>
     </button>

@@ -67,6 +67,8 @@ pub struct RepoSummary {
     pub html_url: String,
     pub pinned: bool,
     pub last_opened_at: Option<i64>,
+    /// Blob SHA of the repo's own icon, if it has one (served by the `scrblob` protocol).
+    pub icon_sha: Option<String>,
 }
 
 /// Columns sync owns, in bind order (?1..). `synced_at` and `gone` are handled separately.
@@ -165,8 +167,9 @@ pub fn list(conn: &Connection) -> Result<Vec<RepoSummary>> {
         "SELECT r.id, r.owner, r.name, r.full_name, r.owner_is_org, r.description, r.homepage,
                 r.topics, r.primary_language, r.is_private, r.is_fork, r.is_archived,
                 r.default_branch, r.stars, r.forks, r.open_issues, r.open_prs, r.pushed_at,
-                r.html_url, COALESCE(l.pinned, 0), l.last_opened_at
+                r.html_url, COALESCE(l.pinned, 0), l.last_opened_at, i.blob_sha
          FROM repos r LEFT JOIN repo_local l ON l.repo_id = r.id
+         LEFT JOIN repo_icons i ON i.repo_id = r.id
          WHERE r.gone = 0
          ORDER BY COALESCE(l.pinned, 0) DESC, l.pin_order, l.last_opened_at IS NULL,
                   l.last_opened_at DESC, r.pushed_at DESC",
@@ -197,9 +200,26 @@ pub fn list(conn: &Connection) -> Result<Vec<RepoSummary>> {
             html_url: row.get(18)?,
             pinned: row.get(19)?,
             last_opened_at: row.get(20)?,
+            icon_sha: row.get(21)?,
         })
     })?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Where a repo lives on GitHub.
+pub struct Location {
+    pub owner: String,
+    pub name: String,
+}
+
+pub fn locate(conn: &Connection, repo_id: i64) -> Result<Location> {
+    conn.query_row("SELECT owner, name FROM repos WHERE id = ?1", [repo_id], |r| {
+        Ok(Location { owner: r.get(0)?, name: r.get(1)? })
+    })
+    .map_err(|e| match e {
+        rusqlite::Error::QueryReturnedNoRows => crate::error::Error::Other(format!("unknown repo {repo_id}")),
+        e => e.into(),
+    })
 }
 
 pub fn languages(conn: &Connection, repo_id: i64) -> Result<Vec<Language>> {

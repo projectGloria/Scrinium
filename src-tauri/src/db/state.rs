@@ -64,7 +64,8 @@ pub fn clear_account(conn: &mut Connection) -> Result<()> {
 
 fn wipe_user_data(conn: &Connection) -> Result<()> {
     conn.execute_batch(
-        "DELETE FROM repos; DELETE FROM repo_local; DELETE FROM sync_state; DELETE FROM http_cache;",
+        "DELETE FROM repos; DELETE FROM repo_local; DELETE FROM sync_state; DELETE FROM http_cache;
+         DELETE FROM blobs;",
     )?;
     Ok(())
 }

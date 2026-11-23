@@ -126,3 +126,40 @@ export const CloseIcon = (p: P) => (
     <path d="m4 4 8 8M12 4l-8 8" />
   </svg>
 );
+export const PlayIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M5 3.5v9l7-4.5z" />
+  </svg>
+);
+export const BookIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M2 3h4a2 2 0 0 1 2 2v8.5a1.5 1.5 0 0 0-1.5-1.5H2zM14 3h-4a2 2 0 0 0-2 2v8.5a1.5 1.5 0 0 1 1.5-1.5H14z" />
+  </svg>
+);
+export const ExternalIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M9.5 2.5h4v4M13.5 2.5 8 8M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" />
+  </svg>
+);
+export const CheckIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="m3.5 8.5 3 3 6-7" />
+  </svg>
+);
+export const XIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="m4.5 4.5 7 7M11.5 4.5l-7 7" />
+  </svg>
+);
+export const CommandIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="m4 5 3 3-3 3M8.5 11.5H12" />
+  </svg>
+);
+export const WorkflowIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="2" y="2" width="4.5" height="4.5" rx="1" />
+    <rect x="9.5" y="9.5" width="4.5" height="4.5" rx="1" />
+    <path d="M4.25 6.5v3.25a2 2 0 0 0 2 2H9.5" />
+  </svg>
+);

@@ -1,0 +1,23 @@
+query RepoDirs($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    root: object(expression: "HEAD:") { ...Entries }
+    dotgithub: object(expression: "HEAD:.github") { ...Entries }
+    public: object(expression: "HEAD:public") { ...Entries }
+    assets: object(expression: "HEAD:assets") { ...Entries }
+    static: object(expression: "HEAD:static") { ...Entries }
+    resources: object(expression: "HEAD:resources") { ...Entries }
+    images: object(expression: "HEAD:images") { ...Entries }
+    img: object(expression: "HEAD:img") { ...Entries }
+    icons: object(expression: "HEAD:icons") { ...Entries }
+    media: object(expression: "HEAD:media") { ...Entries }
+    docs: object(expression: "HEAD:docs") { ...Entries }
+    build: object(expression: "HEAD:build") { ...Entries }
+    srcassets: object(expression: "HEAD:src/assets") { ...Entries }
+    tauri: object(expression: "HEAD:src-tauri/icons") { ...Entries }
+    android: object(expression: "HEAD:app/src/main/res/mipmap-xxxhdpi") { ...Entries }
+  }
+}
+
+fragment Entries on Tree {
+  entries { name path type oid object { ... on Blob { byteSize } } }
+}

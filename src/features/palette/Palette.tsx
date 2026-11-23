@@ -1,0 +1,263 @@
+// Ctrl+K command palette: repositories (FTS + fuzzy, ranked in Rust) and commands.
+// Typing ">" first searches commands only.
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import * as ipc from "../../ipc/commands";
+import type { RepoSummary } from "../../ipc/types";
+import { useRepos } from "../../stores/repos";
+import { useUi } from "../../stores/ui";
+import { useNav } from "../../stores/nav";
+import { useSession } from "../../stores/session";
+import { useActions } from "../../stores/actions";
+import { fuzzyScore } from "../../shared/lib/fuzzy";
+import { ago } from "../../shared/lib/format";
+import {
+  BookIcon,
+  CommandIcon,
+  ExternalIcon,
+  PinIcon,
+  RefreshIcon,
+  SearchIcon,
+  SunIcon,
+  WorkflowIcon,
+} from "../../shared/ui/Icons";
+import { Kbd } from "../../shared/ui/Kbd";
+import { RepoGlyph } from "../repos/RepoGlyph";
+import { openRepo } from "../repos/open";
+
+interface Command {
+  id: string;
+  label: string;
+  hint?: string;
+  icon: ReactNode;
+  run: () => void;
+}
+
+type Item = { kind: "repo"; repo: RepoSummary } | { kind: "cmd"; cmd: Command };
+
+export function Palette() {
+  const open = useUi((s) => s.paletteOpen);
+  const setOpen = useUi((s) => s.setPaletteOpen);
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40" style={{ background: "var(--overlay)" }} />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="fixed left-1/2 top-[11vh] z-50 flex w-[min(640px,92vw)] -translate-x-1/2 flex-col overflow-hidden rounded-xl bg-elev"
+          style={{ boxShadow: "var(--shadow)" }}
+        >
+          <Dialog.Title className="sr-only">Command palette</Dialog.Title>
+          {open && <PaletteBody close={() => setOpen(false)} />}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function useCommands(close: () => void): Command[] {
+  const route = useNav((s) => s.stack[s.stack.length - 1]);
+  const repoId = route.kind === "repo" ? route.repoId : null;
+  const repo = useRepos((s) => (repoId != null ? s.byId.get(repoId) : undefined));
+  const workflows = useActions((s) => (repoId != null ? s.byRepo[repoId]?.workflows : undefined));
+  const theme = useUi((s) => s.theme);
+
+  useEffect(() => {
+    // Cached workflow list only; the Actions tab does the network refresh.
+    if (repoId != null && !useActions.getState().byRepo[repoId]) {
+      void ipc.actionsGet(repoId).then((a) =>
+        useActions.setState((s) => ({ byRepo: { ...s.byRepo, [repoId]: s.byRepo[repoId] ?? a } })),
+      );
+    }
+  }, [repoId]);
+
+  return useMemo(() => {
+    const ui = useUi.getState();
+    const after = (fn: () => void) => () => {
+      close();
+      fn();
+    };
+    const list: Command[] = [];
+    if (repo) {
+      list.push(
+        { id: "readme", label: "Show README", hint: repo.name, icon: <BookIcon size={13} />, run: after(() => ui.setRepoTab("readme")) },
+        { id: "actions", label: "Show Actions", hint: repo.name, icon: <WorkflowIcon size={13} />, run: after(() => ui.setRepoTab("actions")) },
+        ...(workflows ?? [])
+          .filter((w) => w.dispatchable && w.state === "active")
+          .map((w) => ({
+            id: `run:${w.id}`,
+            label: `Run workflow: ${w.name}`,
+            hint: repo.name,
+            icon: <WorkflowIcon size={13} />,
+            run: after(() => {
+              ui.setRepoTab("actions");
+              ui.setRunDialog({ repoId: repo.id, workflowId: w.id });
+            }),
+          })),
+        { id: "web", label: "Open on GitHub", hint: repo.fullName, icon: <ExternalIcon size={13} />, run: after(() => void ipc.openExternal(repo.htmlUrl)) },
+        {
+          id: "pin",
+          label: repo.pinned ? "Unpin repository" : "Pin repository",
+          hint: repo.name,
+          icon: <PinIcon size={13} />,
+          run: after(() => void useRepos.getState().setPinned(repo.id, !repo.pinned)),
+        },
+      );
+    }
+    list.push(
+      { id: "switch", label: "Switch repository (with filters)", hint: "Ctrl P", icon: <SearchIcon size={13} />, run: after(() => ui.setSwitcherOpen(true)) },
+      { id: "sync", label: "Sync now", icon: <RefreshIcon size={13} />, run: after(() => void ipc.syncNow()) },
+      { id: "theme", label: "Change theme", hint: `now: ${theme}`, icon: <SunIcon size={13} />, run: after(() => ui.cycleTheme()) },
+      {
+        id: "signout",
+        label: "Sign out and clear cache",
+        icon: <CommandIcon size={13} />,
+        run: after(async () => {
+          await useSession.getState().signOut();
+          useRepos.getState().clear();
+          useNav.getState().reset();
+        }),
+      },
+    );
+    return list;
+  }, [repo, workflows, theme, close]);
+}
+
+function PaletteBody({ close }: { close: () => void }) {
+  const byId = useRepos((s) => s.byId);
+  const commands = useCommands(close);
+  const [query, setQuery] = useState("");
+  const [repoIds, setRepoIds] = useState<number[]>([]);
+  const [cursor, setCursor] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const cmdOnly = query.startsWith(">");
+  const q = (cmdOnly ? query.slice(1) : query).trim();
+
+  // Rust ranks repos; only the latest response is applied.
+  const seq = useRef(0);
+  useEffect(() => {
+    if (cmdOnly) return setRepoIds([]);
+    const n = ++seq.current;
+    void ipc.paletteSearch(q, 40).then((ids) => {
+      if (n === seq.current) setRepoIds(ids);
+    });
+  }, [q, cmdOnly]);
+
+  const items = useMemo<Item[]>(() => {
+    const repos: Item[] = repoIds.flatMap((id) => {
+      const repo = byId.get(id);
+      return repo ? [{ kind: "repo" as const, repo }] : [];
+    });
+    const cmds: Item[] = (q
+      ? commands
+          .map((cmd) => ({ cmd, s: Math.max(fuzzyScore(q, cmd.label), fuzzyScore(q, cmd.hint ?? "") - 300) }))
+          .filter((x) => x.s >= 0)
+          .sort((a, b) => b.s - a.s)
+          .map((x) => x.cmd)
+      : commands
+    ).map((cmd) => ({ kind: "cmd" as const, cmd }));
+    if (cmdOnly) return cmds;
+    // Empty query: a few recent repos, then everything you can do here.
+    return q ? [...repos, ...cmds] : [...repos.slice(0, 8), ...cmds];
+  }, [repoIds, byId, commands, q, cmdOnly]);
+
+  useEffect(() => setCursor(0), [query]);
+  useEffect(() => {
+    listRef.current?.querySelector(`[data-i="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
+  const choose = (it: Item | undefined) => {
+    if (!it) return;
+    if (it.kind === "repo") {
+      close();
+      openRepo(it.repo.id);
+    } else it.cmd.run();
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const step = (d: number) => {
+      e.preventDefault();
+      setCursor((c) => Math.min(items.length - 1, Math.max(0, c + d)));
+    };
+    if (e.key === "ArrowDown" || (e.ctrlKey && e.key === "n")) step(1);
+    else if (e.key === "ArrowUp" || (e.ctrlKey && e.key === "p")) step(-1);
+    else if (e.key === "PageDown") step(8);
+    else if (e.key === "PageUp") step(-8);
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      choose(items[cursor]);
+    }
+  };
+
+  const firstCmd = items.findIndex((it) => it.kind === "cmd");
+
+  return (
+    <div onKeyDown={onKeyDown}>
+      <div className="flex h-11 items-center gap-2.5 border-b border-line px-3.5">
+        <SearchIcon size={14} className="text-subtle" />
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          spellCheck={false}
+          placeholder="Search repositories, or > for commands"
+          className="flex-1 bg-transparent text-[14px] outline-none"
+        />
+      </div>
+
+      <div ref={listRef} className="max-h-[min(460px,58vh)] overflow-y-auto p-1.5">
+        {items.length === 0 && <div className="py-8 text-center text-[12px] text-subtle">No results</div>}
+        {items.map((it, i) => {
+          const sel = i === cursor;
+          const header =
+            i === 0 && it.kind === "repo" ? "Repositories" : i === firstCmd ? "Commands" : null;
+          return (
+            <div key={it.kind === "repo" ? `r${it.repo.id}` : `c${it.cmd.id}`}>
+              {header && <div className="px-2.5 pb-1 pt-2 text-[10.5px] font-medium uppercase tracking-wide text-subtle">{header}</div>}
+              <div
+                data-i={i}
+                onMouseMove={() => sel || setCursor(i)}
+                onClick={() => choose(it)}
+                className={`flex h-9 items-center gap-3 rounded-lg px-2.5 ${sel ? "bg-active" : ""}`}
+              >
+                {it.kind === "repo" ? <RepoRow repo={it.repo} /> : <CmdRow cmd={it.cmd} />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex h-8 items-center gap-3 border-t border-line px-3 text-[11px] text-subtle">
+        <span className="flex items-center gap-1"><Kbd>↑</Kbd><Kbd>↓</Kbd> move</span>
+        <span className="flex items-center gap-1"><Kbd>Enter</Kbd> run</span>
+        <span className="flex items-center gap-1"><Kbd>&gt;</Kbd> commands only</span>
+        <span className="flex items-center gap-1"><Kbd>Esc</Kbd> close</span>
+      </div>
+    </div>
+  );
+}
+
+function RepoRow({ repo }: { repo: RepoSummary }) {
+  return (
+    <>
+      <RepoGlyph repo={repo} size={14} />
+      <div className="min-w-0 flex-1 truncate text-[13px]">
+        <span className="text-subtle">{repo.owner}/</span>
+        <span className="font-medium text-fg">{repo.name}</span>
+        {repo.description && <span className="ml-2 text-[11.5px] text-subtle">{repo.description}</span>}
+      </div>
+      <span className="shrink-0 text-[11px] text-subtle">{ago(repo.pushedAt)}</span>
+    </>
+  );
+}
+
+function CmdRow({ cmd }: { cmd: Command }) {
+  return (
+    <>
+      <span className="flex w-[14px] shrink-0 justify-center text-subtle">{cmd.icon}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{cmd.label}</span>
+      {cmd.hint && <span className="shrink-0 truncate text-[11px] text-subtle">{cmd.hint}</span>}
+    </>
+  );
+}

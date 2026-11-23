@@ -4,7 +4,10 @@ use rusqlite::Connection;
 
 use crate::error::Result;
 
-const MIGRATIONS: &[&str] = &[include_str!("migrations/0001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("migrations/0001_init.sql"),
+    include_str!("migrations/0002_content.sql"),
+];
 
 pub fn run(conn: &Connection) -> Result<()> {
     let current: usize = conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;

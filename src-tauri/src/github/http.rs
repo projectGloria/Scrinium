@@ -1,7 +1,7 @@
 //! The only reqwest client that talks to api.github.com.
 //!
-//! Its public surface is GET-only. `graphql.rs` (read-only queries) and, from M5, `write.rs`
-//! (the single create-repo call) reach the raw client through `pub(super)` accessors; nothing
+//! Its public surface is GET-only. `graphql.rs` (read-only queries) and `write.rs` (the only
+//! calls that change anything on GitHub) reach the raw client through `pub(super)` accessors; nothing
 //! outside the `github` module can. `guard_test.rs` enforces this at test time.
 
 use std::sync::RwLock;
@@ -18,7 +18,6 @@ pub const API: &str = "https://api.github.com";
 const USER_AGENT: &str = concat!("Scrinium/", env!("CARGO_PKG_VERSION"));
 
 /// Result of a conditional GET.
-#[allow(dead_code)] // first REST consumers (README, trees) arrive in M2/M3
 pub enum Conditional {
     /// 304: the cached copy is still current (costs no rate limit).
     NotModified,
@@ -102,7 +101,6 @@ impl Http {
     }
 
     /// Conditional GET with `If-None-Match`. A 304 does not count against the rate limit.
-    #[allow(dead_code)] // first REST consumers (README, trees) arrive in M2/M3
     pub async fn get_conditional(&self, path: &str, etag: Option<&str>) -> Result<Conditional> {
         self.rate.wait("core").await?;
         let mut req = self

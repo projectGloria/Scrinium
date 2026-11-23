@@ -1,6 +1,6 @@
-//! Write-guard: the app may perform exactly one mutating GitHub call (POST /user/repos, M5).
-//! These tests scan the Rust sources and the GraphQL documents and fail if any other
-//! mutating request could exist.
+//! Write-guard: the only mutating GitHub calls the app may make live in `github/write.rs`
+//! (workflow dispatch; create-repo in M5). These tests scan the Rust sources and the GraphQL
+//! documents and fail if any other mutating request could exist.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,7 +9,7 @@ use super::graphql;
 
 /// Pattern -> the only files (relative to src/, forward slashes) where it may appear.
 const RULES: &[(&str, &[&str])] = &[
-    // POST: GraphQL transport (read-only queries), OAuth device-flow handshake, create-repo.
+    // POST: GraphQL transport (read-only queries), OAuth device-flow handshake, write.rs.
     (".post(", &["github/graphql.rs", "auth/device_flow.rs", "github/write.rs"]),
     (".put(", &[]),
     (".patch(", &[]),
@@ -70,6 +70,30 @@ fn no_mutating_http_calls_outside_the_allowlist() {
         .collect();
     let v = violations(&files);
     assert!(v.is_empty(), "write-guard violations:\n  {}", v.join("\n  "));
+}
+
+/// Endpoints `write.rs` may target, as written in its `format!("{API}...")` strings.
+const ALLOWED_WRITES: &[&str] = &[
+    "/repos/{}/{}/actions/workflows/{workflow_id}/dispatches",
+    "/user/repos",
+];
+
+#[test]
+fn write_module_only_targets_allowed_endpoints() {
+    let text = fs::read_to_string(src_root().join("github/write.rs")).unwrap();
+    let urls: Vec<&str> = text
+        .match_indices("\"{API}")
+        .map(|(i, m)| {
+            let rest = &text[i + m.len()..];
+            &rest[..rest.find('"').unwrap()]
+        })
+        .collect();
+    assert!(!urls.is_empty(), "no endpoints found in write.rs; did the URL style change?");
+    for u in &urls {
+        assert!(ALLOWED_WRITES.contains(u), "write.rs targets an endpoint not on the allowlist: {u}");
+    }
+    let posts = text.matches(".post(").count();
+    assert_eq!(posts, urls.len(), "every POST in write.rs must use one of the listed endpoints");
 }
 
 #[test]

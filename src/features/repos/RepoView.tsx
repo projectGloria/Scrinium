@@ -3,12 +3,17 @@ import type { Language } from "../../ipc/types";
 import { useRepos } from "../../stores/repos";
 import { ago, compact } from "../../shared/lib/format";
 import { BranchIcon, ClockIcon, ForkIcon, IssueIcon, PinIcon, PrIcon, StarIcon } from "../../shared/ui/Icons";
+import { useUi, type RepoTab } from "../../stores/ui";
+import { Readme } from "../readme/Readme";
+import { ActionsPanel } from "../actions/ActionsPanel";
+import { RepoGlyph } from "./RepoGlyph";
 
 export function RepoView({ repoId }: { repoId: number }) {
   const repo = useRepos((s) => s.byId.get(repoId));
   const langs = useRepos((s) => s.languages[repoId]);
   const loadLanguages = useRepos((s) => s.loadLanguages);
   const setPinned = useRepos((s) => s.setPinned);
+  const tab = useUi((s) => s.repoTab);
 
   useEffect(() => {
     void loadLanguages(repoId);
@@ -26,6 +31,7 @@ export function RepoView({ repoId }: { repoId: number }) {
     <div className="min-w-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[920px] px-8 py-6">
         <div className="flex items-start gap-3">
+          {repo.iconSha && <RepoGlyph repo={repo} size={29} />}
           <div className="min-w-0 flex-1">
             <h1 className="selectable truncate text-[18px] font-semibold tracking-tight">
               <span className="font-normal text-muted">{repo.owner} / </span>
@@ -75,10 +81,36 @@ export function RepoView({ repoId }: { repoId: number }) {
 
         {langs && langs.length > 0 && <LanguageBar langs={langs} />}
 
-        <div className="mt-8 rounded-lg border border-dashed border-line px-4 py-6 text-center text-[12px] text-subtle">
-          README, files, issues and pull requests arrive in the next milestones.
+        <Tabs />
+        <div className="mt-5">
+          {tab === "readme" ? <Readme repo={repo} /> : <ActionsPanel repo={repo} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Tabs() {
+  const tab = useUi((s) => s.repoTab);
+  const setTab = useUi((s) => s.setRepoTab);
+  const items: [RepoTab, string, string][] = [
+    ["readme", "README", "g d"],
+    ["actions", "Actions", "g a"],
+  ];
+  return (
+    <div className="mt-7 flex gap-1 border-b border-line">
+      {items.map(([id, label, keys]) => (
+        <button
+          key={id}
+          title={keys}
+          onClick={() => setTab(id)}
+          className={`t-fast -mb-px border-b-2 px-3 pb-2 pt-1 text-[12.5px] ${
+            tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }

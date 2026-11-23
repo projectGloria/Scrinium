@@ -22,6 +22,9 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "for
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 thiserror = "2"
+nucleo-matcher = "0.3.1"
+yaml-rust2 = "0.13.2"
+base64 = "0.23.1"
 
 [profile.dev.package."*"]
 opt-level = 2

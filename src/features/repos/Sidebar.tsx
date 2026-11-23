@@ -9,6 +9,7 @@ import { PinIcon, SearchIcon } from "../../shared/ui/Icons";
 import { Kbd } from "../../shared/ui/Kbd";
 import { RepoGlyph } from "./RepoGlyph";
 import { openRepo } from "./open";
+import { prefetchReadme } from "../readme/Readme";
 
 const ROW = 28;
 
@@ -52,6 +53,14 @@ export function Sidebar() {
   useEffect(() => {
     if (cursor < items.length) virt.scrollToIndex(cursor, { align: "auto" });
   }, [cursor, items.length, virt]);
+
+  // Resting on a repo for a moment warms its README (a 304 costs no rate limit).
+  const cursorId = items[cursor]?.id;
+  useEffect(() => {
+    if (cursorId == null || cursorId === activeId) return;
+    const t = setTimeout(() => prefetchReadme(cursorId), 150);
+    return () => clearTimeout(t);
+  }, [cursorId, activeId]);
 
   return (
     <aside className="flex w-[264px] shrink-0 flex-col border-r border-line bg-elev">

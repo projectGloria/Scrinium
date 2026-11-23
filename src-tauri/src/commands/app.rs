@@ -25,3 +25,14 @@ pub async fn sync_now(state: State<'_, AppState>) -> Result<(), ()> {
 pub async fn sync_status(state: State<'_, AppState>) -> Result<SyncStatus, ()> {
     Ok(state.sync.status(&state.db))
 }
+
+/// Opens an http(s) link in the system browser. Nothing else (no file paths, no custom schemes).
+#[tauri::command]
+pub async fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("only http(s) links can be opened".into());
+    }
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}

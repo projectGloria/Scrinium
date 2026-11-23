@@ -3,6 +3,11 @@ import type { SyncStatus } from "../ipc/types";
 import { applyTheme, loadThemePref, saveThemePref, type ThemePref } from "../shared/theme";
 
 export type Tri = "all" | "only" | "hide";
+export type RepoTab = "readme" | "actions";
+export interface RunTarget {
+  repoId: number;
+  workflowId: number;
+}
 
 export interface SwitcherFilters {
   owner: string; // "" = any
@@ -26,6 +31,15 @@ interface UiState {
   setSidebarCursor: (i: number) => void;
   sidebarFilter: string;
   setSidebarFilter: (q: string) => void;
+
+  paletteOpen: boolean;
+  setPaletteOpen: (open: boolean) => void;
+
+  repoTab: RepoTab;
+  setRepoTab: (t: RepoTab) => void;
+  /** Workflow whose run dialog is open (opened from the Actions tab or the palette). */
+  runDialog: RunTarget | null;
+  setRunDialog: (t: RunTarget | null) => void;
 
   sync: SyncStatus;
   setSync: (s: SyncStatus) => void;
@@ -51,6 +65,14 @@ export const useUi = create<UiState>((set, get) => ({
   setSidebarCursor: (sidebarCursor) => set({ sidebarCursor }),
   sidebarFilter: "",
   setSidebarFilter: (sidebarFilter) => set({ sidebarFilter, sidebarCursor: 0 }),
+
+  paletteOpen: false,
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+
+  repoTab: "readme",
+  setRepoTab: (repoTab) => set({ repoTab }),
+  runDialog: null,
+  setRunDialog: (runDialog) => set({ runDialog }),
 
   sync: { running: false, lastSuccessAt: null, lastError: null },
   setSync: (sync) => set({ sync }),

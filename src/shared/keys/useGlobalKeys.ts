@@ -1,7 +1,8 @@
 // Global keyboard map. Lists register what they need here; one window listener dispatches.
 //
-//   Ctrl/Cmd+K  repo switcher (becomes the full command palette in M2)
-//   g r         repo switcher          g i / g p   issues / PRs (M4)
+//   Ctrl/Cmd+K  command palette        Ctrl/Cmd+P  repo switcher (with filters)
+//   g r         repo switcher          g d / g a   README / Actions of the open repo
+//   g i / g p   issues / PRs (M4)
 //   j / k       move in the sidebar list (arrows work too)
 //   Enter       open the highlighted repo
 //   /           focus the sidebar filter
@@ -30,12 +31,20 @@ export function useGlobalKeys() {
       const ui = useUi.getState();
       const mod = e.ctrlKey || e.metaKey;
 
-      if (mod && e.key.toLowerCase() === "k") {
+      const key = e.key.toLowerCase();
+      if (mod && key === "k") {
         e.preventDefault();
+        ui.setSwitcherOpen(false);
+        ui.setPaletteOpen(!ui.paletteOpen);
+        return;
+      }
+      if (mod && key === "p" && !e.shiftKey) {
+        e.preventDefault();
+        ui.setPaletteOpen(false);
         ui.setSwitcherOpen(!ui.switcherOpen);
         return;
       }
-      if (ui.switcherOpen || isTyping(e.target) || e.altKey || mod) return;
+      if (ui.switcherOpen || ui.paletteOpen || ui.runDialog || isTyping(e.target) || e.altKey || mod) return;
 
       // Two-key "g" sequences.
       if (gPending && Date.now() - gPending < 1000) {
@@ -43,6 +52,9 @@ export function useGlobalKeys() {
         if (e.key === "r") {
           e.preventDefault();
           ui.setSwitcherOpen(true);
+        } else if ((e.key === "a" || e.key === "d") && useNav.getState().current().kind === "repo") {
+          e.preventDefault();
+          ui.setRepoTab(e.key === "a" ? "actions" : "readme");
         }
         // "i" and "p" are wired up with issues/PRs in M4.
         return;

@@ -116,3 +116,74 @@ body {
 input::placeholder {
   color: var(--fg-subtle);
 }
+
+/* Rendered markdown (README). Kept close to GitHub's proportions. */
+.markdown {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg);
+  overflow-wrap: break-word;
+  user-select: text;
+  cursor: auto;
+}
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown p, .markdown ul, .markdown ol, .markdown blockquote, .markdown pre, .markdown table, .markdown details {
+  margin: 0 0 16px;
+}
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+  margin: 24px 0 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  scroll-margin-top: 12px;
+}
+.markdown h1 { font-size: 1.75em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.markdown h2 { font-size: 1.4em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.markdown h3 { font-size: 1.2em; }
+.markdown h4 { font-size: 1em; }
+.markdown h5, .markdown h6 { font-size: 0.9em; color: var(--fg-muted); }
+.markdown a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.markdown a:hover { text-decoration: underline; }
+.markdown ul, .markdown ol { padding-left: 2em; }
+.markdown ul { list-style: disc; }
+.markdown ol { list-style: decimal; }
+.markdown li + li { margin-top: 0.25em; }
+.markdown li > ul, .markdown li > ol { margin: 0.25em 0 0; }
+.markdown blockquote {
+  padding: 0 1em;
+  color: var(--fg-muted);
+  border-left: 3px solid var(--border-strong);
+}
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  background: var(--bg-active);
+}
+.markdown pre {
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  line-height: 1.5;
+}
+.markdown pre code { padding: 0; background: none; font-size: 12.5px; }
+.markdown img { max-width: 100%; display: inline-block; vertical-align: middle; }
+.markdown img[data-repo-path]:not([src]) { min-width: 16px; min-height: 16px; }
+.markdown hr { height: 1px; margin: 24px 0; border: 0; background: var(--border); }
+.markdown table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; }
+.markdown th, .markdown td { padding: 6px 13px; border: 1px solid var(--border); }
+.markdown th { font-weight: 600; background: var(--bg-elev); }
+.markdown details summary { cursor: pointer; }
+.markdown kbd {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--bg-elev);
+}
+.markdown [align="center"] { text-align: center; }
+.markdown [align="right"] { text-align: right; }

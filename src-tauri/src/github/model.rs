@@ -136,3 +136,107 @@ mod tests {
         assert_eq!(parse_timestamp("garbage"), None);
     }
 }
+
+// ── REST: contents / blobs ────────────────────────────────────────────────
+
+/// `GET /repos/{o}/{r}/readme` and `/contents/{path}` (file variant).
+#[derive(Debug, Deserialize)]
+pub struct ContentFile {
+    pub path: String,
+    pub sha: String,
+    pub size: i64,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub encoding: String,
+}
+
+/// `GET /repos/{o}/{r}/git/blobs/{sha}`.
+#[derive(Debug, Deserialize)]
+pub struct GitBlob {
+    pub content: String,
+    pub encoding: String,
+}
+
+// ── GraphQL: directory listings (icon discovery, workflow files) ──────────
+
+#[derive(Debug, Deserialize)]
+pub struct RepoDirsData {
+    pub repository: Option<std::collections::HashMap<String, Option<TreeObj>>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TreeObj {
+    #[serde(default)]
+    pub entries: Vec<TreeEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TreeEntry {
+    pub name: String,
+    pub path: Option<String>,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub oid: String,
+    pub object: Option<BlobInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlobInfo {
+    pub byte_size: Option<i64>,
+    pub text: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorkflowFilesData {
+    pub repository: Option<WorkflowFilesRepo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorkflowFilesRepo {
+    pub object: Option<TreeObj>,
+}
+
+// ── REST: Actions ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct WorkflowList {
+    pub workflows: Vec<WorkflowDto>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorkflowDto {
+    pub id: i64,
+    pub name: String,
+    pub path: String,
+    pub state: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RunList {
+    pub workflow_runs: Vec<RunDto>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RunDto {
+    pub id: i64,
+    pub workflow_id: i64,
+    pub name: Option<String>,
+    pub display_title: Option<String>,
+    pub run_number: i64,
+    pub event: String,
+    pub status: Option<String>,
+    pub conclusion: Option<String>,
+    pub head_branch: Option<String>,
+    pub actor: Option<Actor>,
+    pub html_url: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Actor {
+    pub login: String,
+}
