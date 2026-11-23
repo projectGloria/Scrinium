@@ -1,0 +1,38 @@
+query ViewerRepos($cursor: String, $first: Int!) {
+  viewer {
+    repositories(
+      first: $first
+      after: $cursor
+      ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
+      orderBy: { field: PUSHED_AT, direction: DESC }
+    ) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        databaseId
+        id
+        name
+        nameWithOwner
+        owner { __typename login }
+        description
+        homepageUrl
+        repositoryTopics(first: 20) { nodes { topic { name } } }
+        primaryLanguage { name }
+        isPrivate
+        isFork
+        isArchived
+        defaultBranchRef { name }
+        stargazerCount
+        forkCount
+        issues(states: OPEN) { totalCount }
+        pullRequests(states: OPEN) { totalCount }
+        pushedAt
+        updatedAt
+        url
+        sshUrl
+        languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+          edges { size node { name color } }
+        }
+      }
+    }
+  }
+}

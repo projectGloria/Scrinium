@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* Theme tokens. `data-theme` on <html> is set before first paint (see shared/theme.ts). */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1013;
+  --bg-elev: #15161a;
+  --bg-hover: #1b1c21;
+  --bg-active: #22242a;
+  --border: #23252b;
+  --border-strong: #31333b;
+  --fg: #e4e5e9;
+  --fg-muted: #9b9ea8;
+  --fg-subtle: #686b75;
+  --accent: #7c8cff;
+  --accent-soft: rgb(124 140 255 / 0.14);
+  --danger: #f07070;
+  --success: #4cc38a;
+  --warn: #e2b154;
+  --overlay: rgb(0 0 0 / 0.5);
+  --shadow: 0 16px 48px rgb(0 0 0 / 0.5), 0 0 0 1px var(--border-strong);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-elev: #f7f7f8;
+  --bg-hover: #f0f0f3;
+  --bg-active: #e7e8ed;
+  --border: #e6e6ea;
+  --border-strong: #d5d6dc;
+  --fg: #17181c;
+  --fg-muted: #5c5f69;
+  --fg-subtle: #8b8e97;
+  --accent: #4b5ce6;
+  --accent-soft: rgb(75 92 230 / 0.1);
+  --danger: #d23f3f;
+  --success: #1f9d61;
+  --warn: #b07b12;
+  --overlay: rgb(20 20 30 / 0.25);
+  --shadow: 0 16px 48px rgb(20 20 40 / 0.18), 0 0 0 1px var(--border-strong);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+/* Text the user may want to copy stays selectable. */
+.selectable {
+  user-select: text;
+  cursor: auto;
+}
+
+/* Fast, subtle state changes only; never longer than 120ms. */
+.t-fast {
+  transition-property: background-color, color, border-color, opacity;
+  transition-duration: 80ms;
+  transition-timing-function: ease-out;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+input::placeholder {
+  color: var(--fg-subtle);
+}
