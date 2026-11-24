@@ -25,6 +25,8 @@ query ViewerRepos($cursor: String, $first: Int!) {
         forkCount
         issues(states: OPEN) { totalCount }
         pullRequests(states: OPEN) { totalCount }
+        latestIssue: issues(first: 1, orderBy: { field: UPDATED_AT, direction: DESC }) { nodes { updatedAt } }
+        latestPr: pullRequests(first: 1, orderBy: { field: UPDATED_AT, direction: DESC }) { nodes { updatedAt } }
         pushedAt
         updatedAt
         url

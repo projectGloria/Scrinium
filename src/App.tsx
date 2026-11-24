@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { onReposChanged, onSyncStatus } from "./ipc/events";
+import { onIssuesChanged, onReposChanged, onSyncStatus } from "./ipc/events";
 import { syncStatus } from "./ipc/commands";
 import { useSession } from "./stores/session";
 import { useRepos } from "./stores/repos";
 import { useUi } from "./stores/ui";
 import { useNav } from "./stores/nav";
+import { useIssues } from "./stores/issues";
 import { useGlobalKeys } from "./shared/keys/useGlobalKeys";
 import { Titlebar } from "./shared/ui/Titlebar";
 import { SignIn } from "./features/auth/SignIn";
@@ -35,7 +36,7 @@ function Workspace() {
     <div className="flex min-h-0 flex-1">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
-        {route.kind === "repo" ? <RepoView repoId={route.repoId} /> : <Home />}
+        {route.kind === "home" ? <Home /> : <RepoView repoId={route.repoId} />}
       </main>
       <RepoSwitcher />
       <Palette />
@@ -56,6 +57,7 @@ function useBackendEvents() {
     };
     const subs = [
       onReposChanged(reload),
+      onIssuesChanged((repoId) => void useIssues.getState().reloadRepo(repoId)),
       onSyncStatus((s) => {
         useUi.getState().setSync(s);
         // A rejected token means the session is over; show the sign-in screen.

@@ -7,11 +7,14 @@ import type {
   DeviceCode,
   FileContent,
   FileEntry,
+  IssueDetail,
+  IssueList,
   Language,
   PaletteResults,
   RefList,
   Readme,
   RepoSummary,
+  StateFilter,
   SyncStatus,
   TreeInfo,
 } from "./types";
@@ -36,8 +39,19 @@ export const repoSetPinned = (id: number, pinned: boolean) =>
 export const openExternal = (url: string) => invoke<void>("open_external", { url });
 
 /** Repo ids and file paths (default branches), best match first. */
-export const paletteSearch = (q: string, limit?: number, fileLimit?: number) =>
-  invoke<PaletteResults>("palette_search", { q, limit, fileLimit });
+export const paletteSearch = (q: string, limit?: number, fileLimit?: number, issueLimit?: number) =>
+  invoke<PaletteResults>("palette_search", { q, limit, fileLimit, issueLimit });
+
+/** Cached issues or PRs (SQLite only), most recently updated first. */
+export const issuesList = (repoId: number, isPr: boolean, filter: StateFilter) =>
+  invoke<IssueList>("issues_list", { repoId, isPr, filter });
+/** Revalidates a list (at most once a minute unless forced). True if anything changed. */
+export const issuesRefresh = (repoId: number, isPr: boolean, force?: boolean) =>
+  invoke<boolean>("issues_refresh", { repoId, isPr, force });
+export const issueGet = (repoId: number, number: number) => invoke<IssueDetail | null>("issue_get", { repoId, number });
+/** Fetches body, comments and checks (at most every 30s unless forced). */
+export const issueRefresh = (repoId: number, number: number, force?: boolean) =>
+  invoke<IssueDetail | null>("issue_refresh", { repoId, number, force });
 
 export const readmeGet = (repoId: number) => invoke<Readme | null>("readme_get", { repoId });
 export const readmeRefresh = (repoId: number) => invoke<Readme | null>("readme_refresh", { repoId });

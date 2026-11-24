@@ -29,10 +29,21 @@ pub const REPO_DIRS: Query = Query::new("repo_dirs", include_str!("queries/repo_
 pub const REPO_REFS: Query = Query::new("repo_refs", include_str!("queries/repo_refs.graphql"));
 pub const WORKFLOW_FILES: Query =
     Query::new("workflow_files", include_str!("queries/workflow_files.graphql"));
+pub const REPO_ISSUES: Query = Query::new("repo_issues", include_str!("queries/repo_issues.graphql"));
+pub const REPO_PRS: Query = Query::new("repo_prs", include_str!("queries/repo_prs.graphql"));
+pub const ISSUE_DETAIL: Query = Query::new("issue_detail", include_str!("queries/issue_detail.graphql"));
 
 /// Every query the app can run (checked by the write-guard tests).
 #[cfg_attr(not(test), allow(dead_code))]
-pub const ALL: &[&Query] = &[&VIEWER_REPOS, &REPO_DIRS, &REPO_REFS, &WORKFLOW_FILES];
+pub const ALL: &[&Query] = &[
+    &VIEWER_REPOS,
+    &REPO_DIRS,
+    &REPO_REFS,
+    &WORKFLOW_FILES,
+    &REPO_ISSUES,
+    &REPO_PRS,
+    &ISSUE_DETAIL,
+];
 
 /// True if the document declares a mutation or subscription operation anywhere.
 pub(super) fn is_write_operation(doc: &str) -> bool {

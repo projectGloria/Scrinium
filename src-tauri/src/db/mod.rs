@@ -7,6 +7,7 @@ pub mod content;
 pub mod actions;
 pub mod search;
 pub mod files;
+pub mod issues;
 
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};

@@ -1,9 +1,10 @@
 import { create } from "zustand";
+import { useNav } from "./nav";
 import type { SyncStatus } from "../ipc/types";
 import { applyTheme, loadThemePref, saveThemePref, type ThemePref } from "../shared/theme";
 
 export type Tri = "all" | "only" | "hide";
-export type RepoTab = "readme" | "files" | "actions";
+export type RepoTab = "readme" | "files" | "issues" | "prs" | "actions";
 export interface RunTarget {
   repoId: number;
   workflowId: number;
@@ -70,7 +71,12 @@ export const useUi = create<UiState>((set, get) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
 
   repoTab: "readme",
-  setRepoTab: (repoTab) => set({ repoTab }),
+  setRepoTab: (repoTab) => {
+    // Leaving the tab closes an open issue/PR detail.
+    const nav = useNav.getState();
+    if (nav.current().kind === "issue") nav.back();
+    set({ repoTab });
+  },
   runDialog: null,
   setRunDialog: (runDialog) => set({ runDialog }),
 

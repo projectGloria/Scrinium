@@ -22,8 +22,8 @@ use serde_json::json;
 use crate::error::{Error, Result};
 use http::{Conditional, Http};
 use model::{
-    ContentFile, GitBlob, GitTree, RepoDirsData, RepoRefs, RepoRefsData, ReposPage, RunList, TreeObj, User,
-    ViewerReposData, WorkflowFilesData, WorkflowList,
+    ContentFile, GitBlob, GitTree, IssueConnection, IssueDetailData, IssueListData, IssueNode, RepoDirsData,
+    RepoRefs, RepoRefsData, ReposPage, RunList, TreeObj, User, ViewerReposData, WorkflowFilesData, WorkflowList,
 };
 
 pub use write::WriteApi;
@@ -127,6 +127,29 @@ impl ReadApi {
         let vars = json!({ "owner": owner, "name": name });
         let data: WorkflowFilesData = graphql::run(&self.http, &graphql::WORKFLOW_FILES, vars).await?;
         Ok(data.repository.and_then(|r| r.object))
+    }
+
+    /// One page of issues (or PRs), most recently updated first. `states: None` means all.
+    pub async fn issues_page(
+        &self,
+        owner: &str,
+        name: &str,
+        is_pr: bool,
+        states: Option<&[&str]>,
+        first: u32,
+        cursor: Option<&str>,
+    ) -> Result<Option<IssueConnection>> {
+        let vars = json!({ "owner": owner, "name": name, "states": states, "first": first, "cursor": cursor });
+        let q = if is_pr { &graphql::REPO_PRS } else { &graphql::REPO_ISSUES };
+        let data: IssueListData = graphql::run(&self.http, q, vars).await?;
+        Ok(data.repository.map(|r| r.items))
+    }
+
+    /// One issue or PR with its comments and (PRs) check runs.
+    pub async fn issue_detail(&self, owner: &str, name: &str, number: i64) -> Result<Option<IssueNode>> {
+        let vars = json!({ "owner": owner, "name": name, "number": number });
+        let data: IssueDetailData = graphql::run(&self.http, &graphql::ISSUE_DETAIL, vars).await?;
+        Ok(data.repository.and_then(|r| r.item))
     }
 
     pub fn workflows_path(owner: &str, name: &str) -> String {

@@ -2,13 +2,14 @@
 //
 //   Ctrl/Cmd+K  command palette        Ctrl/Cmd+P  repo switcher (with filters)
 //   g r         repo switcher          g d / g f / g a   README / Files / Actions of the open repo
-//   g i / g p   issues / PRs (M4)
+//   g i / g p   Issues / Pull requests of the open repo
+//   (Lists that hold focus, like the file tree and issue lists, handle j/k/Enter themselves.)
 //   j / k       move in the sidebar list (arrows work too)
 //   Enter       open the highlighted repo
 //   /           focus the sidebar filter
 //   Esc         go back
 import { useEffect } from "react";
-import { useUi } from "../../stores/ui";
+import { useUi, type RepoTab } from "../../stores/ui";
 import { useNav } from "../../stores/nav";
 
 /** Set by the sidebar so global keys can drive it without prop-drilling. */
@@ -17,6 +18,8 @@ export const sidebarNav = {
   open: (_index: number) => {},
   filterInput: null as HTMLInputElement | null,
 };
+
+const TAB_KEYS: Record<string, RepoTab> = { d: "readme", f: "files", i: "issues", p: "prs", a: "actions" };
 
 function isTyping(t: EventTarget | null) {
   const el = t as HTMLElement | null;
@@ -52,11 +55,10 @@ export function useGlobalKeys() {
         if (e.key === "r") {
           e.preventDefault();
           ui.setSwitcherOpen(true);
-        } else if ((e.key === "a" || e.key === "d" || e.key === "f") && useNav.getState().current().kind === "repo") {
+        } else if (e.key in TAB_KEYS && useNav.getState().current().kind !== "home") {
           e.preventDefault();
-          ui.setRepoTab(e.key === "a" ? "actions" : e.key === "f" ? "files" : "readme");
+          ui.setRepoTab(TAB_KEYS[e.key]);
         }
-        // "i" and "p" are wired up with issues/PRs in M4.
         return;
       }
       gPending = 0;

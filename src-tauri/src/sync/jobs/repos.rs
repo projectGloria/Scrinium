@@ -8,7 +8,7 @@ use crate::db::repos::{self, Language, RepoRow};
 use crate::db::{self, Db};
 use crate::error::{Error, Result};
 use crate::events::REPOS_CHANGED;
-use crate::github::model::{parse_timestamp, ReposPage, RepoNode};
+use crate::github::model::{parse_timestamp, Nodes, ReposPage, RepoNode, UpdatedAt};
 use crate::github::ReadApi;
 
 /// GitHub's GraphQL API times out (502/504) on heavy pages: each repo also asks for topics,
@@ -111,6 +111,8 @@ fn to_row(n: RepoNode) -> Option<RepoRow> {
         forks: n.fork_count,
         open_issues: n.issues.total_count,
         open_prs: n.pull_requests.total_count,
+        issues_latest_at: latest(n.latest_issue),
+        prs_latest_at: latest(n.latest_pr),
         pushed_at: n.pushed_at.as_deref().and_then(parse_timestamp),
         updated_at: n.updated_at.as_deref().and_then(parse_timestamp),
         clone_url: format!("{}.git", n.url),
@@ -118,4 +120,8 @@ fn to_row(n: RepoNode) -> Option<RepoRow> {
         ssh_url: n.ssh_url,
         languages,
     })
+}
+
+fn latest(n: Option<Nodes<UpdatedAt>>) -> Option<i64> {
+    n?.nodes.into_iter().flatten().next().and_then(|u| parse_timestamp(&u.updated_at))
 }

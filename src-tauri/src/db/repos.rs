@@ -33,6 +33,9 @@ pub struct RepoRow {
     pub clone_url: String,
     /// Root tree of the default branch.
     pub default_tree_sha: Option<String>,
+    /// updatedAt of the most recently updated issue / PR on GitHub.
+    pub issues_latest_at: Option<i64>,
+    pub prs_latest_at: Option<i64>,
     pub languages: Vec<Language>,
 }
 
@@ -80,7 +83,7 @@ const SYNC_COLS: &[&str] = &[
     "id", "node_id", "owner", "name", "full_name", "owner_is_org", "description", "homepage",
     "topics", "primary_language", "is_private", "is_fork", "is_archived", "default_branch",
     "stars", "forks", "open_issues", "open_prs", "pushed_at", "updated_at", "html_url",
-    "ssh_url", "clone_url", "default_tree_sha",
+    "ssh_url", "clone_url", "default_tree_sha", "issues_latest_at", "prs_latest_at",
 ];
 
 /// Upsert that only writes (and only counts as a change) when some synced column differs.
@@ -132,7 +135,8 @@ pub fn upsert_page(conn: &mut Connection, rows: &[RepoRow], synced_at: i64) -> R
                 r.id, r.node_id, r.owner, r.name, r.full_name, r.owner_is_org, r.description,
                 r.homepage, r.topics, r.primary_language, r.is_private, r.is_fork, r.is_archived,
                 r.default_branch, r.stars, r.forks, r.open_issues, r.open_prs, r.pushed_at,
-                r.updated_at, r.html_url, r.ssh_url, r.clone_url, r.default_tree_sha, synced_at,
+                r.updated_at, r.html_url, r.ssh_url, r.clone_url, r.default_tree_sha, r.issues_latest_at,
+                r.prs_latest_at, synced_at,
             ])? > 0;
             changed |= revive.execute(params![r.id])? > 0;
             stamp.execute(params![r.id, synced_at])?;
@@ -297,6 +301,8 @@ mod tests {
             ssh_url: format!("git@github.com:me/{name}.git"),
             clone_url: format!("https://github.com/me/{name}.git"),
             default_tree_sha: None,
+            issues_latest_at: None,
+            prs_latest_at: None,
             languages: vec![Language { name: "Rust".into(), bytes: 10, color: Some("#dea584".into()) }],
         }
     }

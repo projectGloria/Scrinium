@@ -84,6 +84,10 @@ pub fn run() {
             commands::files::files_dir,
             commands::files::files_lookup,
             commands::files::file_get,
+            commands::issues::issues_list,
+            commands::issues::issues_refresh,
+            commands::issues::issue_get,
+            commands::issues::issue_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Scrinium");

@@ -159,7 +159,78 @@ export interface FileHit {
   path: string;
 }
 
+export interface IssueHit {
+  repoId: number;
+  number: number;
+  isPr: boolean;
+  title: string;
+  state: IssueState;
+}
+
 export interface PaletteResults {
   repos: number[];
   files: FileHit[];
+  issues: IssueHit[];
+}
+
+export type IssueState = "OPEN" | "CLOSED" | "MERGED";
+/** For PRs, "closed" includes merged. */
+export type StateFilter = "open" | "closed" | "all";
+
+export interface Label {
+  name: string;
+  color: string | null;
+}
+
+/** An issue or a pull request (one list row). */
+export interface IssueSummary {
+  number: number;
+  isPr: boolean;
+  title: string;
+  state: IssueState;
+  /** Issues: COMPLETED / NOT_PLANNED / REOPENED. */
+  stateReason: string | null;
+  isDraft: boolean;
+  author: string | null;
+  commentsCount: number;
+  labels: Label[];
+  /** PRs: rollup of the head commit's checks (SUCCESS / FAILURE / ERROR / PENDING / EXPECTED). */
+  checksState: string | null;
+  createdAt: number;
+  updatedAt: number;
+  closedAt: number | null;
+  mergedAt: number | null;
+}
+
+export interface IssueList {
+  items: IssueSummary[];
+  open: number;
+  closed: number;
+  syncedAt: number | null;
+}
+
+export interface Check {
+  name: string;
+  state: string;
+  url: string | null;
+}
+
+export interface IssueComment {
+  id: string;
+  author: string | null;
+  authorAvatar: string | null;
+  body: string;
+  createdAt: number;
+}
+
+export interface IssueDetail extends IssueSummary {
+  body: string | null;
+  authorAvatar: string | null;
+  headRef: string | null;
+  baseRef: string | null;
+  htmlUrl: string;
+  /** Null until comments/checks were fetched once. */
+  detailAt: number | null;
+  comments: IssueComment[];
+  checks: Check[];
 }

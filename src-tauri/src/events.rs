@@ -4,6 +4,8 @@ use serde::Serialize;
 
 /// Repo rows changed in SQLite; the frontend re-reads its list. No payload.
 pub const REPOS_CHANGED: &str = "sync://repos-changed";
+/// Issues/PRs of one repo changed in SQLite. Payload: the repo id.
+pub const ISSUES_CHANGED: &str = "sync://issues-changed";
 /// Sync started/finished/failed. Payload: [`SyncStatus`].
 pub const SYNC_STATUS: &str = "sync://status";
 

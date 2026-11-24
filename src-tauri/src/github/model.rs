@@ -53,6 +53,8 @@ pub struct RepoNode {
     pub fork_count: i64,
     pub issues: Count,
     pub pull_requests: Count,
+    pub latest_issue: Option<Nodes<UpdatedAt>>,
+    pub latest_pr: Option<Nodes<UpdatedAt>>,
     pub pushed_at: Option<String>,
     pub updated_at: Option<String>,
     pub url: String,
@@ -107,6 +109,12 @@ pub struct Named {
 #[serde(rename_all = "camelCase")]
 pub struct Count {
     pub total_count: i64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatedAt {
+    pub updated_at: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -304,4 +312,120 @@ pub struct GitTreeItem {
     pub kind: String,
     pub sha: String,
     pub size: Option<i64>,
+}
+
+// ── GraphQL: issues and pull requests ────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct IssueListData {
+    pub repository: Option<IssueListRepo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueListRepo {
+    pub items: IssueConnection,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueConnection {
+    pub page_info: PageInfo,
+    pub nodes: Vec<Option<IssueNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueDetailData {
+    pub repository: Option<IssueDetailRepo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueDetailRepo {
+    pub item: Option<IssueNode>,
+}
+
+/// An issue or a pull request, from a list or from the detail query (PR-only and
+/// detail-only fields are absent elsewhere).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueNode {
+    #[serde(rename = "__typename")]
+    pub typename: Option<String>,
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: String,
+    pub state_reason: Option<String>,
+    #[serde(default)]
+    pub is_draft: bool,
+    pub url: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub closed_at: Option<String>,
+    pub merged_at: Option<String>,
+    pub author: Option<AuthorNode>,
+    pub comments: CommentConnection,
+    pub labels: Option<Nodes<LabelNode>>,
+    pub head_ref_name: Option<String>,
+    pub base_ref_name: Option<String>,
+    pub commits: Option<Nodes<CommitWrap>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorNode {
+    pub login: String,
+    pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentConnection {
+    pub total_count: i64,
+    #[serde(default)]
+    pub nodes: Vec<Option<CommentNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentNode {
+    pub id: String,
+    pub author: Option<AuthorNode>,
+    pub body: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LabelNode {
+    pub name: String,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CommitWrap {
+    pub commit: CommitRollup,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitRollup {
+    pub status_check_rollup: Option<Rollup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Rollup {
+    pub state: String,
+    pub contexts: Option<Nodes<CheckContext>>,
+}
+
+/// A `CheckRun` (name/status/conclusion) or a commit `StatusContext` (context/state).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckContext {
+    pub name: Option<String>,
+    pub status: Option<String>,
+    pub conclusion: Option<String>,
+    pub details_url: Option<String>,
+    pub context: Option<String>,
+    pub state: Option<String>,
+    pub target_url: Option<String>,
 }

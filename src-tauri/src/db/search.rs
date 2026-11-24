@@ -144,6 +144,70 @@ pub fn files(conn: &Connection, q: &str, limit: usize) -> Result<Vec<FileHit>> {
     Ok(scored.into_iter().take(limit).map(|(_, _, h)| h).collect())
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueHit {
+    pub repo_id: i64,
+    pub number: i64,
+    pub is_pr: bool,
+    pub title: String,
+    pub state: String,
+}
+
+/// Open items get this much on top of their match score.
+const OPEN_BONUS: u32 = 10;
+
+/// Issues and PRs by title (or `#123`), best-first; open and recently updated items win ties.
+pub fn issues(conn: &Connection, q: &str, limit: usize) -> Result<Vec<IssueHit>> {
+    let q = q.trim();
+    if limit == 0 {
+        return Ok(Vec::new());
+    }
+    let map = |r: &rusqlite::Row| -> rusqlite::Result<IssueHit> {
+        Ok(IssueHit { repo_id: r.get(0)?, number: r.get(1)?, is_pr: r.get(2)?, title: r.get(3)?, state: r.get(4)? })
+    };
+    if let Some(n) = q.strip_prefix('#').and_then(|n| n.parse::<i64>().ok()) {
+        let mut stmt = conn.prepare_cached(
+            "SELECT i.repo_id, i.number, i.is_pr, i.title, i.state FROM issues i
+             JOIN repos r ON r.id = i.repo_id AND r.gone = 0
+             LEFT JOIN repo_local l ON l.repo_id = r.id
+             WHERE i.number = ?1
+             ORDER BY COALESCE(l.pinned, 0) DESC, l.last_opened_at DESC, i.updated_at DESC LIMIT ?2",
+        )?;
+        return Ok(stmt.query_map(rusqlite::params![n, limit as i64], map)?.collect::<rusqlite::Result<_>>()?);
+    }
+    let words: Vec<String> = q
+        .split_whitespace()
+        .filter(|w| w.chars().count() >= 3)
+        .map(|w| format!("\"{}\"", w.replace('"', "\"\"")))
+        .collect();
+    if words.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut stmt = conn.prepare_cached(
+        "SELECT i.repo_id, i.number, i.is_pr, i.title, i.state FROM issues_fts f
+         JOIN issues i ON i.rowid = f.rowid
+         JOIN repos r ON r.id = i.repo_id AND r.gone = 0
+         WHERE issues_fts MATCH ?1 ORDER BY i.updated_at DESC LIMIT 400",
+    )?;
+    let cands: Vec<IssueHit> = stmt.query_map([words.join(" ")], map)?.collect::<rusqlite::Result<_>>()?;
+    let pattern = Pattern::parse(q, CaseMatching::Ignore, Normalization::Smart);
+    let mut matcher = Matcher::new(Config::DEFAULT);
+    let mut buf = Vec::new();
+    let mut scored: Vec<(u32, usize, IssueHit)> = cands
+        .into_iter()
+        .enumerate()
+        .map(|(order, h)| {
+            // Every candidate contains the query words; nucleo only refines the order.
+            let s = pattern.score(Utf32Str::new(&h.title, &mut buf), &mut matcher).unwrap_or(0);
+            let open = if h.state == "OPEN" { OPEN_BONUS } else { 0 };
+            (s + open, order, h)
+        })
+        .collect();
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    Ok(scored.into_iter().take(limit).map(|(_, _, h)| h).collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,6 +258,23 @@ mod tests {
         assert_eq!(hits[0], FileHit { repo_id: 1, path: "src/features/palette/Palette.tsx".into() });
         assert!(files(&r, "re", 10).unwrap().is_empty());
         assert_eq!(files(&r, "readme", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn finds_issues_by_title_and_number() {
+        let db = Db::open_in_memory().unwrap();
+        insert(&db, 1, "app", "", "");
+        let rows = vec![
+            crate::db::issues::tests::row(1, "Crash when opening palette", "CLOSED", 10),
+            crate::db::issues::tests::row(2, "Palette is slow", "OPEN", 5),
+            crate::db::issues::tests::row(3, "Unrelated", "OPEN", 1),
+        ];
+        crate::db::issues::upsert(&mut db.write(), 1, false, &rows).unwrap();
+        let r = db.read();
+        let hits = issues(&r, "palette", 10).unwrap();
+        assert_eq!(hits.iter().map(|h| h.number).collect::<Vec<_>>(), vec![2, 1], "open first");
+        assert_eq!(issues(&r, "#3", 10).unwrap()[0].title, "Unrelated");
+        assert!(issues(&r, "pa", 10).unwrap().is_empty());
     }
 
     #[test]

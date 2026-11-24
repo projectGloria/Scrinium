@@ -1,0 +1,25 @@
+query RepoPrs($owner: String!, $name: String!, $states: [PullRequestState!], $first: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    items: pullRequests(first: $first, after: $cursor, states: $states, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        number
+        title
+        body
+        state
+        isDraft
+        url
+        createdAt
+        updatedAt
+        closedAt
+        mergedAt
+        author { login avatarUrl }
+        comments { totalCount }
+        labels(first: 20) { nodes { name color } }
+        headRefName
+        baseRefName
+        commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+      }
+    }
+  }
+}

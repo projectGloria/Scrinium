@@ -7,6 +7,9 @@ import { useUi, type RepoTab } from "../../stores/ui";
 import { Readme } from "../readme/Readme";
 import { ActionsPanel } from "../actions/ActionsPanel";
 import { FilesPanel } from "../files/FilesPanel";
+import { IssuesPanel } from "../issues/IssuesPanel";
+import { IssueDetail } from "../issues/IssueDetail";
+import { useNav } from "../../stores/nav";
 import { RepoGlyph } from "./RepoGlyph";
 
 export function RepoView({ repoId }: { repoId: number }) {
@@ -15,6 +18,7 @@ export function RepoView({ repoId }: { repoId: number }) {
   const loadLanguages = useRepos((s) => s.loadLanguages);
   const setPinned = useRepos((s) => s.setPinned);
   const tab = useUi((s) => s.repoTab);
+  const route = useNav((s) => s.stack[s.stack.length - 1]);
 
   useEffect(() => {
     void loadLanguages(repoId);
@@ -28,8 +32,10 @@ export function RepoView({ repoId }: { repoId: number }) {
     );
   }
 
-  // The Files tab fills the window height (tree and viewer scroll on their own); the others scroll the page.
-  const fill = tab === "files";
+  // Files and the issue/PR lists fill the window height (they scroll on their own); the rest scroll the page.
+  const isList = tab === "issues" || tab === "prs";
+  const detail = isList && route.kind === "issue" && route.isPr === (tab === "prs") ? route : null;
+  const fill = tab === "files" || (isList && !detail);
   return (
     <div className={`min-w-0 flex-1 overflow-y-auto ${fill ? "flex flex-col" : ""}`}>
       <div className={`mx-auto w-full px-8 ${fill ? "flex min-h-[560px] max-w-[1280px] flex-1 flex-col pb-4 pt-6" : "max-w-[920px] py-6"}`}>
@@ -84,14 +90,20 @@ export function RepoView({ repoId }: { repoId: number }) {
 
         {langs && langs.length > 0 && <LanguageBar langs={langs} />}
 
-        <Tabs />
+        <Tabs repoOpenIssues={repo.openIssues} repoOpenPrs={repo.openPrs} />
         {fill ? (
           <div className="mt-4 flex min-h-0 flex-1 flex-col">
-            <FilesPanel repo={repo} />
+            {tab === "files" ? <FilesPanel repo={repo} /> : <IssuesPanel key={tab} repo={repo} isPr={tab === "prs"} />}
           </div>
         ) : (
           <div className="mt-5">
-            {tab === "readme" ? <Readme repo={repo} /> : <ActionsPanel repo={repo} />}
+            {detail ? (
+              <IssueDetail key={`${detail.isPr}:${detail.number}`} repo={repo} number={detail.number} isPr={detail.isPr} />
+            ) : tab === "readme" ? (
+              <Readme repo={repo} />
+            ) : (
+              <ActionsPanel repo={repo} />
+            )}
           </div>
         )}
       </div>
@@ -99,17 +111,19 @@ export function RepoView({ repoId }: { repoId: number }) {
   );
 }
 
-function Tabs() {
+function Tabs({ repoOpenIssues, repoOpenPrs }: { repoOpenIssues: number; repoOpenPrs: number }) {
   const tab = useUi((s) => s.repoTab);
   const setTab = useUi((s) => s.setRepoTab);
-  const items: [RepoTab, string, string][] = [
+  const items: [RepoTab, string, string, number?][] = [
     ["readme", "README", "g d"],
     ["files", "Files", "g f"],
+    ["issues", "Issues", "g i", repoOpenIssues],
+    ["prs", "Pull requests", "g p", repoOpenPrs],
     ["actions", "Actions", "g a"],
   ];
   return (
     <div className="mt-7 flex gap-1 border-b border-line">
-      {items.map(([id, label, keys]) => (
+      {items.map(([id, label, keys, n]) => (
         <button
           key={id}
           title={keys}
@@ -119,6 +133,7 @@ function Tabs() {
           }`}
         >
           {label}
+          {!!n && <span className="ml-1.5 rounded-full bg-active px-1.5 text-[10.5px] text-muted">{compact(n)}</span>}
         </button>
       ))}
     </div>
