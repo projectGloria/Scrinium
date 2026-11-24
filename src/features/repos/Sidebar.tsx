@@ -5,7 +5,7 @@ import { useUi } from "../../stores/ui";
 import { useNav } from "../../stores/nav";
 import { useSession } from "../../stores/session";
 import { sidebarNav } from "../../shared/keys/useGlobalKeys";
-import { PinIcon, SearchIcon } from "../../shared/ui/Icons";
+import { PinIcon, PlusIcon, SearchIcon } from "../../shared/ui/Icons";
 import { Kbd } from "../../shared/ui/Kbd";
 import { RepoGlyph } from "./RepoGlyph";
 import { openRepo } from "./open";
@@ -64,8 +64,8 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-[264px] shrink-0 flex-col border-r border-line bg-elev">
-      <div className="p-2">
-        <div className="t-fast flex h-7 items-center gap-2 rounded-md border border-line bg-bg px-2 focus-within:border-accent">
+      <div className="flex gap-1.5 p-2">
+        <div className="t-fast flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md border border-line bg-bg px-2 focus-within:border-accent">
           <SearchIcon size={12} className="text-subtle" />
           <input
             ref={filterRef}
@@ -88,6 +88,13 @@ export function Sidebar() {
           />
           {!filter && <Kbd>/</Kbd>}
         </div>
+        <button
+          title="Create repository"
+          onClick={() => useUi.getState().setCreateRepoOpen(true)}
+          className="t-fast flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line text-muted hover:bg-hover hover:text-fg"
+        >
+          <PlusIcon size={13} />
+        </button>
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">

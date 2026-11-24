@@ -195,3 +195,24 @@ export const WorkflowIcon = ({ size, ...p }: P) => (
     <path d="M4.25 6.5v3.25a2 2 0 0 0 2 2H9.5" />
   </svg>
 );
+export const CopyIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.5" />
+    <path d="M10.75 5.25V3.75a1.5 1.5 0 0 0-1.5-1.5h-5.5a1.5 1.5 0 0 0-1.5 1.5v5.5a1.5 1.5 0 0 0 1.5 1.5h1.5" />
+  </svg>
+);
+export const CodeIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M5.5 4.25 1.75 8l3.75 3.75M10.5 4.25 14.25 8l-3.75 3.75" />
+  </svg>
+);
+export const PlusIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M8 2.75v10.5M2.75 8h10.5" />
+  </svg>
+);
+export const DownloadIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M8 2v8M4.75 7 8 10.25 11.25 7M2.75 13.25h10.5" />
+  </svg>
+);

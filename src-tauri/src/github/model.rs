@@ -429,3 +429,48 @@ pub struct CheckContext {
     pub state: Option<String>,
     pub target_url: Option<String>,
 }
+
+/// The repository GitHub returns from `POST /user/repos` (REST shape).
+#[derive(Debug, Deserialize)]
+pub struct RestRepo {
+    pub id: i64,
+    pub node_id: String,
+    pub name: String,
+    pub full_name: String,
+    pub owner: RestOwner,
+    pub description: Option<String>,
+    pub homepage: Option<String>,
+    #[serde(default)]
+    pub topics: Vec<String>,
+    pub language: Option<String>,
+    pub private: bool,
+    pub fork: bool,
+    #[serde(default)]
+    pub archived: bool,
+    pub default_branch: Option<String>,
+    #[serde(default)]
+    pub stargazers_count: i64,
+    #[serde(default)]
+    pub forks_count: i64,
+    #[serde(default)]
+    pub open_issues_count: i64,
+    pub pushed_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub html_url: String,
+    pub ssh_url: String,
+    pub clone_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RestOwner {
+    pub login: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+}
+
+/// An entry of `GET /licenses`.
+#[derive(Debug, Clone, Deserialize, serde::Serialize)]
+pub struct LicenseInfo {
+    pub key: String,
+    pub name: String,
+}

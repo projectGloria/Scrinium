@@ -9,6 +9,7 @@ import type {
   FileEntry,
   IssueDetail,
   IssueList,
+  NewRepo,
   Language,
   PaletteResults,
   RefList,
@@ -16,6 +17,7 @@ import type {
   RepoSummary,
   StateFilter,
   SyncStatus,
+  Templates,
   TreeInfo,
 } from "./types";
 
@@ -78,3 +80,12 @@ export const filesLookup = (treeSha: string, path: string) =>
   invoke<FileEntry | null>("files_lookup", { treeSha, path });
 export const fileGet = (repoId: number, sha: string, path: string, size?: number | null) =>
   invoke<FileContent>("file_get", { repoId, sha, path, size: size ?? undefined });
+
+export const repoTemplates = () => invoke<Templates>("repo_templates");
+/** The app's only other GitHub write besides starting a workflow. Returns the new repo id. */
+export const repoCreate = (repo: NewRepo) => invoke<number>("repo_create", { repo });
+/** Native folder picker for the clone's parent folder. Null if cancelled. */
+export const pickCloneFolder = (repoId: number) => invoke<string | null>("pick_clone_folder", { repoId });
+/** Runs `git clone` into `<parent>/<repo name>`; returns that folder. */
+export const repoClone = (repoId: number, parent: string, ssh: boolean) => invoke<string>("repo_clone", { repoId, parent, ssh });
+export const openInVscode = (repoId: number) => invoke<void>("open_in_vscode", { repoId });

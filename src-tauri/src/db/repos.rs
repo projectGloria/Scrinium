@@ -70,8 +70,12 @@ pub struct RepoSummary {
     pub open_prs: i64,
     pub pushed_at: Option<i64>,
     pub html_url: String,
+    pub clone_url: String,
+    pub ssh_url: String,
     pub pinned: bool,
     pub last_opened_at: Option<i64>,
+    /// Folder this repo was cloned into from the app, if any.
+    pub clone_path: Option<String>,
     /// Blob SHA of the repo's own icon, if it has one (served by the `scrblob` protocol).
     pub icon_sha: Option<String>,
     /// Root tree of the default branch as of the last sync.
@@ -175,7 +179,8 @@ pub fn list(conn: &Connection) -> Result<Vec<RepoSummary>> {
         "SELECT r.id, r.owner, r.name, r.full_name, r.owner_is_org, r.description, r.homepage,
                 r.topics, r.primary_language, r.is_private, r.is_fork, r.is_archived,
                 r.default_branch, r.stars, r.forks, r.open_issues, r.open_prs, r.pushed_at,
-                r.html_url, COALESCE(l.pinned, 0), l.last_opened_at, i.blob_sha, r.default_tree_sha
+                r.html_url, COALESCE(l.pinned, 0), l.last_opened_at, i.blob_sha, r.default_tree_sha,
+                r.clone_url, r.ssh_url, l.clone_path
          FROM repos r LEFT JOIN repo_local l ON l.repo_id = r.id
          LEFT JOIN repo_icons i ON i.repo_id = r.id
          WHERE r.gone = 0
@@ -210,6 +215,9 @@ pub fn list(conn: &Connection) -> Result<Vec<RepoSummary>> {
             last_opened_at: row.get(20)?,
             icon_sha: row.get(21)?,
             default_tree_sha: row.get(22)?,
+            clone_url: row.get(23)?,
+            ssh_url: row.get(24)?,
+            clone_path: row.get(25)?,
         })
     })?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -229,6 +237,36 @@ pub fn locate(conn: &Connection, repo_id: i64) -> Result<Location> {
         rusqlite::Error::QueryReturnedNoRows => crate::error::Error::Other(format!("unknown repo {repo_id}")),
         e => e.into(),
     })
+}
+
+/// What the quick actions need: clone URLs and the local clone, if any.
+pub struct CloneInfo {
+    pub name: String,
+    pub clone_url: String,
+    pub ssh_url: String,
+    pub clone_path: Option<String>,
+}
+
+pub fn clone_info(conn: &Connection, repo_id: i64) -> Result<CloneInfo> {
+    conn.query_row(
+        "SELECT r.name, r.clone_url, r.ssh_url, l.clone_path
+         FROM repos r LEFT JOIN repo_local l ON l.repo_id = r.id WHERE r.id = ?1",
+        [repo_id],
+        |r| Ok(CloneInfo { name: r.get(0)?, clone_url: r.get(1)?, ssh_url: r.get(2)?, clone_path: r.get(3)? }),
+    )
+    .map_err(|e| match e {
+        rusqlite::Error::QueryReturnedNoRows => crate::error::Error::Other(format!("unknown repo {repo_id}")),
+        e => e.into(),
+    })
+}
+
+pub fn set_clone_path(conn: &Connection, repo_id: i64, path: Option<&str>) -> Result<()> {
+    conn.execute(
+        "INSERT INTO repo_local (repo_id, clone_path) VALUES (?1, ?2)
+         ON CONFLICT(repo_id) DO UPDATE SET clone_path = excluded.clone_path",
+        params![repo_id, path],
+    )?;
+    Ok(())
 }
 
 pub fn languages(conn: &Connection, repo_id: i64) -> Result<Vec<Language>> {

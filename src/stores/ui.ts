@@ -10,6 +10,12 @@ export interface RunTarget {
   workflowId: number;
 }
 
+export interface Notice {
+  id: number;
+  text: string;
+  tone: "info" | "ok" | "error";
+}
+
 export interface SwitcherFilters {
   owner: string; // "" = any
   language: string; // "" = any
@@ -42,9 +48,21 @@ interface UiState {
   runDialog: RunTarget | null;
   setRunDialog: (t: RunTarget | null) => void;
 
+  createRepoOpen: boolean;
+  setCreateRepoOpen: (open: boolean) => void;
+
+  /** One short message at the bottom of the window (copied, cloning…, errors). */
+  notice: Notice | null;
+  /** Shows a notice; `ms = 0` keeps it until the next one. Returns its id. */
+  notify: (text: string, tone?: Notice["tone"], ms?: number) => number;
+  dismissNotice: (id?: number) => void;
+
   sync: SyncStatus;
   setSync: (s: SyncStatus) => void;
 }
+
+let noticeSeq = 0;
+let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
 const ORDER: ThemePref[] = ["system", "dark", "light"];
 
@@ -79,6 +97,21 @@ export const useUi = create<UiState>((set, get) => ({
   },
   runDialog: null,
   setRunDialog: (runDialog) => set({ runDialog }),
+
+  createRepoOpen: false,
+  setCreateRepoOpen: (createRepoOpen) => set({ createRepoOpen }),
+
+  notice: null,
+  notify: (text, tone = "info", ms = 2600) => {
+    const id = ++noticeSeq;
+    clearTimeout(noticeTimer);
+    set({ notice: { id, text, tone } });
+    if (ms > 0) noticeTimer = setTimeout(() => get().dismissNotice(id), ms);
+    return id;
+  },
+  dismissNotice: (id) => {
+    if (id === undefined || get().notice?.id === id) set({ notice: null });
+  },
 
   sync: { running: false, lastSuccessAt: null, lastError: null },
   setSync: (sync) => set({ sync }),

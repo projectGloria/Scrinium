@@ -26,7 +26,7 @@ use model::{
     RepoRefs, RepoRefsData, ReposPage, RunList, TreeObj, User, ViewerReposData, WorkflowFilesData, WorkflowList,
 };
 
-pub use write::WriteApi;
+pub use write::{NewRepo, WriteApi};
 
 /// A conditional GET result, decoded.
 pub enum Cached<T> {
@@ -150,6 +150,16 @@ impl ReadApi {
         let vars = json!({ "owner": owner, "name": name, "number": number });
         let data: IssueDetailData = graphql::run(&self.http, &graphql::ISSUE_DETAIL, vars).await?;
         Ok(data.repository.and_then(|r| r.item))
+    }
+
+    /// Names accepted as `gitignore_template` when creating a repo.
+    pub async fn gitignore_templates(&self) -> Result<Vec<String>> {
+        self.http.get_json("/gitignore/templates").await
+    }
+
+    /// Licenses accepted as `license_template` when creating a repo.
+    pub async fn licenses(&self) -> Result<Vec<model::LicenseInfo>> {
+        self.http.get_json("/licenses").await
     }
 
     pub fn workflows_path(owner: &str, name: &str) -> String {

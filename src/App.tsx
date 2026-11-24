@@ -15,6 +15,8 @@ import { RepoView } from "./features/repos/RepoView";
 import { Home } from "./features/repos/Home";
 import { Palette } from "./features/palette/Palette";
 import { RunDialog } from "./features/actions/RunDialog";
+import { CreateRepoDialog } from "./features/create-repo/CreateRepoDialog";
+import { Notice } from "./shared/ui/Notice";
 
 export function App() {
   const status = useSession((s) => s.status);
@@ -41,6 +43,8 @@ function Workspace() {
       <RepoSwitcher />
       <Palette />
       <RunDialog />
+      <CreateRepoDialog />
+      <Notice />
     </div>
   );
 }

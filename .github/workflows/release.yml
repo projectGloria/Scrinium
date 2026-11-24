@@ -1,0 +1,90 @@
+# projectGloria app release. Copy to .github/workflows/release.yml and edit only the `build` job.
+#
+# Runs only when started on purpose: /monjita-github-release, or `gh workflow run release.yml`.
+# Pushing to main never releases.
+#
+#   check   (shared)  version files agree, version not released yet, gloria.toml valid, picks newest gloria-setup
+#   build   (this repo) builds the app and uploads its files as the artifact `app`
+#   release (shared)  packs with that gloria-setup + dry run (or, without gloria.toml, publishes the files as-is),
+#                     then publishes GitHub Release v<version> with SHA256SUMS.txt
+#
+# The shared jobs live in projectGloria/GloriaSetup and are used from @main, so every release picks up
+# the newest checks and the newest gloria-setup without editing this file.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and verify everything, but do not publish
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: projectGloria/GloriaSetup/.github/workflows/app-check.yml@main
+
+  build:
+    needs: check
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+
+      - name: Cache Cargo registry and build
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Install npm dependencies
+        shell: pwsh
+        run: npm ci
+
+      - name: Typecheck and run Rust tests
+        shell: pwsh
+        run: |
+          npm run typecheck
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Build and stage Scrinium
+        shell: pwsh
+        run: |
+          npx tauri build --no-bundle
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item src-tauri/target/release/scrinium.exe stage/scrinium.exe
+          Get-ChildItem stage
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: app
+          path: stage/
+          if-no-files-found: error
+
+  release:
+    needs: [check, build]
+    uses: projectGloria/GloriaSetup/.github/workflows/app-release.yml@main
+    permissions:
+      contents: write
+    with:
+      version: ${{ needs.check.outputs.version }}
+      installer: ${{ needs.check.outputs.installer == 'true' }}
+      gloria_setup: ${{ needs.check.outputs.gloria_setup }}
+      dry_run: ${{ inputs.dry_run }}

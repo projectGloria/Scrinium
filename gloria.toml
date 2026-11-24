@@ -1,0 +1,9 @@
+id             = "Scrinium"
+name           = "Scrinium"
+version        = "0.1.1"
+main_exe       = "scrinium.exe"
+icon           = "src-tauri/icons/icon.ico"
+accent         = "#7c8cff"
+description    = "Read-only, fast desktop browser for your GitHub repositories"
+needs_webview2 = true
+data_folders   = ['%APPDATA%\dev.scrinium.app', '%LOCALAPPDATA%\dev.scrinium.app']

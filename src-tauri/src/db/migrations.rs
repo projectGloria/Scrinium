@@ -9,6 +9,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/0002_content.sql"),
     include_str!("migrations/0003_files.sql"),
     include_str!("migrations/0004_issues.sql"),
+    include_str!("migrations/0005_local_clone.sql"),
 ];
 
 pub fn run(conn: &Connection) -> Result<()> {

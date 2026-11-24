@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import type { Language } from "../../ipc/types";
 import { useRepos } from "../../stores/repos";
 import { ago, compact } from "../../shared/lib/format";
-import { BranchIcon, ClockIcon, ForkIcon, IssueIcon, PinIcon, PrIcon, StarIcon } from "../../shared/ui/Icons";
+import { BranchIcon, ClockIcon, ExternalIcon, ForkIcon, IssueIcon, PinIcon, PrIcon, StarIcon } from "../../shared/ui/Icons";
 import { useUi, type RepoTab } from "../../stores/ui";
 import { Readme } from "../readme/Readme";
 import { ActionsPanel } from "../actions/ActionsPanel";
@@ -11,6 +11,8 @@ import { IssuesPanel } from "../issues/IssuesPanel";
 import { IssueDetail } from "../issues/IssueDetail";
 import { useNav } from "../../stores/nav";
 import { RepoGlyph } from "./RepoGlyph";
+import { CodeMenu } from "./CodeMenu";
+import { openOnGithub } from "./quick";
 
 export function RepoView({ repoId }: { repoId: number }) {
   const repo = useRepos((s) => s.byId.get(repoId));
@@ -52,6 +54,14 @@ export function RepoView({ repoId }: { repoId: number }) {
               {repo.isArchived && <Badge tone="warn">Archived</Badge>}
             </div>
           </div>
+          <CodeMenu repo={repo} />
+          <button
+            title="Open on GitHub"
+            onClick={() => openOnGithub(repo)}
+            className="t-fast flex h-7 w-7 items-center justify-center rounded-md border border-line text-muted hover:bg-hover hover:text-fg"
+          >
+            <ExternalIcon size={12} />
+          </button>
           <button
             onClick={() => void setPinned(repo.id, !repo.pinned)}
             className={`t-fast flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] ${

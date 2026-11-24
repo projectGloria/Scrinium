@@ -20,6 +20,10 @@ import {
   FolderIcon,
   IssueIcon,
   PinIcon,
+  PlusIcon,
+  CopyIcon,
+  CodeIcon,
+  DownloadIcon,
   PrIcon,
   RefreshIcon,
   SearchIcon,
@@ -29,6 +33,7 @@ import {
 import { Kbd } from "../../shared/ui/Kbd";
 import { RepoGlyph } from "../repos/RepoGlyph";
 import { openRepo } from "../repos/open";
+import { cloneToFolder, copyCloneUrl, openInVscode } from "../repos/quick";
 
 interface Command {
   id: string;
@@ -107,6 +112,10 @@ function useCommands(close: () => void): Command[] {
             }),
           })),
         { id: "web", label: "Open on GitHub", hint: repo.fullName, icon: <ExternalIcon size={13} />, run: after(() => void ipc.openExternal(repo.htmlUrl)) },
+        { id: "copy-https", label: "Copy clone URL (HTTPS)", hint: repo.name, icon: <CopyIcon size={13} />, run: after(() => void copyCloneUrl(repo, false)) },
+        { id: "copy-ssh", label: "Copy clone URL (SSH)", hint: repo.name, icon: <CopyIcon size={13} />, run: after(() => void copyCloneUrl(repo, true)) },
+        { id: "clone", label: "Clone to folder…", hint: repo.name, icon: <DownloadIcon size={13} />, run: after(() => void cloneToFolder(repo)) },
+        { id: "vscode", label: "Open in VS Code", hint: repo.name, icon: <CodeIcon size={13} />, run: after(() => void openInVscode(repo)) },
         {
           id: "pin",
           label: repo.pinned ? "Unpin repository" : "Pin repository",
@@ -117,6 +126,7 @@ function useCommands(close: () => void): Command[] {
       );
     }
     list.push(
+      { id: "create", label: "Create repository…", icon: <PlusIcon size={13} />, run: after(() => ui.setCreateRepoOpen(true)) },
       { id: "switch", label: "Switch repository (with filters)", hint: "Ctrl P", icon: <SearchIcon size={13} />, run: after(() => ui.setSwitcherOpen(true)) },
       { id: "sync", label: "Sync now", icon: <RefreshIcon size={13} />, run: after(() => void ipc.syncNow()) },
       { id: "theme", label: "Change theme", hint: `now: ${theme}`, icon: <SunIcon size={13} />, run: after(() => ui.cycleTheme()) },

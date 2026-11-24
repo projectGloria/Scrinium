@@ -42,9 +42,13 @@ export interface RepoSummary {
   /** Unix seconds */
   pushedAt: number | null;
   htmlUrl: string;
+  cloneUrl: string;
+  sshUrl: string;
   pinned: boolean;
   /** Unix seconds */
   lastOpenedAt: number | null;
+  /** Folder the app cloned this repo into, if any. */
+  clonePath: string | null;
   /** SHA of the cached repo icon, served via the scrblob protocol. */
   iconSha: string | null;
   /** Root tree of the default branch (from the repo sync). */
@@ -233,4 +237,24 @@ export interface IssueDetail extends IssueSummary {
   detailAt: number | null;
   comments: IssueComment[];
   checks: Check[];
+}
+
+export interface LicenseInfo {
+  key: string;
+  name: string;
+}
+
+export interface Templates {
+  gitignore: string[];
+  licenses: LicenseInfo[];
+  fetchedAt: number;
+}
+
+export interface NewRepo {
+  name: string;
+  description: string;
+  private: boolean;
+  addReadme: boolean;
+  gitignoreTemplate: string | null;
+  licenseTemplate: string | null;
 }

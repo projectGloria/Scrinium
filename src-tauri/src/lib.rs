@@ -33,6 +33,7 @@ pub fn run() {
     START.get_or_init(Instant::now);
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("scrblob", |ctx, req| blob_response(ctx.app_handle(), req.uri().path()))
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
@@ -88,6 +89,11 @@ pub fn run() {
             commands::issues::issues_refresh,
             commands::issues::issue_get,
             commands::issues::issue_refresh,
+            commands::create::repo_templates,
+            commands::create::repo_create,
+            commands::local::pick_clone_folder,
+            commands::local::repo_clone,
+            commands::local::open_in_vscode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Scrinium");
