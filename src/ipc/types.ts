@@ -47,6 +47,8 @@ export interface RepoSummary {
   lastOpenedAt: number | null;
   /** SHA of the cached repo icon, served via the scrblob protocol. */
   iconSha: string | null;
+  /** Root tree of the default branch (from the repo sync). */
+  defaultTreeSha: string | null;
 }
 
 export interface Language {
@@ -110,4 +112,54 @@ export interface Actions {
   runs: Run[];
   /** Null: never fetched for this repo. */
   checkedAt: number | null;
+}
+
+export interface GitRef {
+  name: string;
+  commitSha: string | null;
+  treeSha: string | null;
+  /** Unix seconds */
+  committedAt: number | null;
+}
+
+export interface RefList {
+  branches: GitRef[];
+  tags: GitRef[];
+  branchesTotal: number;
+  tagsTotal: number;
+  /** Null: never fetched for this repo. */
+  checkedAt: number | null;
+  defaultBranch: string | null;
+  defaultTreeSha: string | null;
+}
+
+export interface TreeInfo {
+  truncated: boolean;
+  entries: number;
+}
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  /** blob / tree / commit (submodule) */
+  kind: string;
+  sha: string;
+  size: number | null;
+}
+
+export interface FileContent {
+  kind: "text" | "image" | "binary" | "large";
+  text: string | null;
+  mime: string;
+  size: number;
+}
+
+export interface FileHit {
+  repoId: number;
+  path: string;
+}
+
+export interface PaletteResults {
+  repos: number[];
+  files: FileHit[];
 }

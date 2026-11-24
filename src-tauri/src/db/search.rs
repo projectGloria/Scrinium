@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
 use rusqlite::Connection;
+use serde::Serialize;
 
 use crate::error::Result;
 
@@ -99,6 +100,50 @@ fn fts_ids(conn: &Connection, q: &str) -> Result<HashMap<i64, ()>> {
     Ok(ids)
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileHit {
+    pub repo_id: i64,
+    pub path: String,
+}
+
+/// File paths (default branches) best-first. Trigram FTS finds candidates, nucleo ranks them,
+/// preferring matches in the file name over matches in the directories.
+pub fn files(conn: &Connection, q: &str, limit: usize) -> Result<Vec<FileHit>> {
+    let q = q.trim();
+    let words: Vec<String> = q
+        .split(|c: char| c.is_whitespace() || c == '/')
+        .filter(|w| w.chars().count() >= 3)
+        .map(|w| format!("\"{}\"", w.replace('"', "\"\"")))
+        .collect();
+    if words.is_empty() || limit == 0 {
+        return Ok(Vec::new());
+    }
+    let mut stmt = conn.prepare_cached(
+        "SELECT f.rowid, f.path FROM files_fts f
+         JOIN repos r ON r.id = (f.rowid >> 20) AND r.gone = 0
+         WHERE files_fts MATCH ?1 LIMIT 400",
+    )?;
+    let cands: Vec<(i64, String)> =
+        stmt.query_map([words.join(" ")], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
+    let pattern = Pattern::parse(q, CaseMatching::Ignore, Normalization::Smart);
+    let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
+    let mut buf = Vec::new();
+    let mut scored: Vec<(u32, usize, FileHit)> = cands
+        .into_iter()
+        .filter_map(|(rowid, path)| {
+            let file = path.rsplit('/').next().unwrap_or(&path);
+            let on_file = pattern.score(Utf32Str::new(file, &mut buf), &mut matcher).map(|s| s + s / 2);
+            let on_path = pattern.score(Utf32Str::new(&path, &mut buf), &mut matcher);
+            // Shorter paths win ties: `src/app.ts` over `vendor/x/y/app.ts`.
+            let s = on_file.max(on_path)?.saturating_sub(path.matches('/').count() as u32);
+            Some((s, path.len(), FileHit { repo_id: crate::db::files::repo_of_row(rowid), path }))
+        })
+        .collect();
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    Ok(scored.into_iter().take(limit).map(|(_, _, h)| h).collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +172,28 @@ mod tests {
         assert_eq!(repos(&r, "markdown", 10, 0).unwrap(), vec![3]);
         assert_eq!(repos(&r, "", 10, 0).unwrap().len(), 3);
         assert!(repos(&r, "zzzzqq", 10, 0).unwrap().is_empty());
+    }
+
+    #[test]
+    fn finds_files_by_name() {
+        let db = Db::open_in_memory().unwrap();
+        insert(&db, 1, "app", "", "");
+        let items = [
+            ("src/features/palette/Palette.tsx", "blob"),
+            ("vendor/lib/palette/other/palette.js", "blob"),
+            ("README.md", "blob"),
+        ];
+        let items: Vec<_> = items
+            .iter()
+            .map(|(p, k)| crate::db::files::TreeItem { path: p, kind: k, sha: p, size: None, mode: None })
+            .collect();
+        crate::db::files::put_tree(&db.write(), "t", false, &items, 0).unwrap();
+        crate::db::files::index_files(&db.write(), 1, "t", 0).unwrap();
+        let r = db.read();
+        let hits = files(&r, "palette.tsx", 10).unwrap();
+        assert_eq!(hits[0], FileHit { repo_id: 1, path: "src/features/palette/Palette.tsx".into() });
+        assert!(files(&r, "re", 10).unwrap().is_empty());
+        assert_eq!(files(&r, "readme", 10).unwrap().len(), 1);
     }
 
     #[test]

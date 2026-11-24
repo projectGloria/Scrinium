@@ -1,9 +1,10 @@
-// Ctrl+K command palette: repositories (FTS + fuzzy, ranked in Rust) and commands.
+// Ctrl+K command palette: repositories and files (FTS + fuzzy, ranked in Rust) and commands.
 // Typing ">" first searches commands only.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as ipc from "../../ipc/commands";
-import type { RepoSummary } from "../../ipc/types";
+import type { FileHit, RepoSummary } from "../../ipc/types";
+import { useFiles } from "../../stores/files";
 import { useRepos } from "../../stores/repos";
 import { useUi } from "../../stores/ui";
 import { useNav } from "../../stores/nav";
@@ -15,6 +16,8 @@ import {
   BookIcon,
   CommandIcon,
   ExternalIcon,
+  FileIcon,
+  FolderIcon,
   PinIcon,
   RefreshIcon,
   SearchIcon,
@@ -33,7 +36,10 @@ interface Command {
   run: () => void;
 }
 
-type Item = { kind: "repo"; repo: RepoSummary } | { kind: "cmd"; cmd: Command };
+type Item =
+  | { kind: "repo"; repo: RepoSummary }
+  | { kind: "file"; hit: FileHit; repo: RepoSummary }
+  | { kind: "cmd"; cmd: Command };
 
 export function Palette() {
   const open = useUi((s) => s.paletteOpen);
@@ -81,6 +87,7 @@ function useCommands(close: () => void): Command[] {
     if (repo) {
       list.push(
         { id: "readme", label: "Show README", hint: repo.name, icon: <BookIcon size={13} />, run: after(() => ui.setRepoTab("readme")) },
+        { id: "files", label: "Show Files", hint: repo.name, icon: <FolderIcon size={13} />, run: after(() => ui.setRepoTab("files")) },
         { id: "actions", label: "Show Actions", hint: repo.name, icon: <WorkflowIcon size={13} />, run: after(() => ui.setRepoTab("actions")) },
         ...(workflows ?? [])
           .filter((w) => w.dispatchable && w.state === "active")
@@ -128,6 +135,7 @@ function PaletteBody({ close }: { close: () => void }) {
   const commands = useCommands(close);
   const [query, setQuery] = useState("");
   const [repoIds, setRepoIds] = useState<number[]>([]);
+  const [fileHits, setFileHits] = useState<FileHit[]>([]);
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -137,10 +145,16 @@ function PaletteBody({ close }: { close: () => void }) {
   // Rust ranks repos; only the latest response is applied.
   const seq = useRef(0);
   useEffect(() => {
-    if (cmdOnly) return setRepoIds([]);
+    if (cmdOnly) {
+      setRepoIds([]);
+      setFileHits([]);
+      return;
+    }
     const n = ++seq.current;
-    void ipc.paletteSearch(q, 40).then((ids) => {
-      if (n === seq.current) setRepoIds(ids);
+    void ipc.paletteSearch(q, 40, 30).then((r) => {
+      if (n !== seq.current) return;
+      setRepoIds(r.repos);
+      setFileHits(r.files);
     });
   }, [q, cmdOnly]);
 
@@ -158,9 +172,13 @@ function PaletteBody({ close }: { close: () => void }) {
       : commands
     ).map((cmd) => ({ kind: "cmd" as const, cmd }));
     if (cmdOnly) return cmds;
-    // Empty query: a few recent repos, then everything you can do here.
-    return q ? [...repos, ...cmds] : [...repos.slice(0, 8), ...cmds];
-  }, [repoIds, byId, commands, q, cmdOnly]);
+    const files: Item[] = fileHits.flatMap((hit) => {
+      const repo = byId.get(hit.repoId);
+      return repo ? [{ kind: "file" as const, hit, repo }] : [];
+    });
+    // Strong repo matches first, then files; empty query: a few recent repos, then commands.
+    return q ? [...repos.slice(0, 12), ...files, ...repos.slice(12), ...cmds] : [...repos.slice(0, 8), ...cmds];
+  }, [repoIds, fileHits, byId, commands, q, cmdOnly]);
 
   useEffect(() => setCursor(0), [query]);
   useEffect(() => {
@@ -172,6 +190,12 @@ function PaletteBody({ close }: { close: () => void }) {
     if (it.kind === "repo") {
       close();
       openRepo(it.repo.id);
+    } else if (it.kind === "file") {
+      close();
+      openRepo(it.repo.id);
+      useUi.getState().setRepoTab("files");
+      // Palette paths come from the default branch.
+      useFiles.getState().openFile(it.repo.id, it.hit.path, null);
     } else it.cmd.run();
   };
 
@@ -201,7 +225,7 @@ function PaletteBody({ close }: { close: () => void }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           spellCheck={false}
-          placeholder="Search repositories, or > for commands"
+          placeholder="Search repositories and files, or > for commands"
           className="flex-1 bg-transparent text-[14px] outline-none"
         />
       </div>
@@ -210,10 +234,12 @@ function PaletteBody({ close }: { close: () => void }) {
         {items.length === 0 && <div className="py-8 text-center text-[12px] text-subtle">No results</div>}
         {items.map((it, i) => {
           const sel = i === cursor;
+          const prev = items[i - 1]?.kind;
           const header =
-            i === 0 && it.kind === "repo" ? "Repositories" : i === firstCmd ? "Commands" : null;
+            it.kind === prev ? null : it.kind === "repo" ? (i === 0 ? "Repositories" : null) : it.kind === "file" ? "Files" : i === firstCmd ? "Commands" : null;
+          const key = it.kind === "repo" ? `r${it.repo.id}` : it.kind === "file" ? `f${it.hit.repoId}:${it.hit.path}` : `c${it.cmd.id}`;
           return (
-            <div key={it.kind === "repo" ? `r${it.repo.id}` : `c${it.cmd.id}`}>
+            <div key={key}>
               {header && <div className="px-2.5 pb-1 pt-2 text-[10.5px] font-medium uppercase tracking-wide text-subtle">{header}</div>}
               <div
                 data-i={i}
@@ -221,7 +247,7 @@ function PaletteBody({ close }: { close: () => void }) {
                 onClick={() => choose(it)}
                 className={`flex h-9 items-center gap-3 rounded-lg px-2.5 ${sel ? "bg-active" : ""}`}
               >
-                {it.kind === "repo" ? <RepoRow repo={it.repo} /> : <CmdRow cmd={it.cmd} />}
+                {it.kind === "repo" ? <RepoRow repo={it.repo} /> : it.kind === "file" ? <FileRow hit={it.hit} repo={it.repo} /> : <CmdRow cmd={it.cmd} />}
               </div>
             </div>
           );
@@ -248,6 +274,22 @@ function RepoRow({ repo }: { repo: RepoSummary }) {
         {repo.description && <span className="ml-2 text-[11.5px] text-subtle">{repo.description}</span>}
       </div>
       <span className="shrink-0 text-[11px] text-subtle">{ago(repo.pushedAt)}</span>
+    </>
+  );
+}
+
+function FileRow({ hit, repo }: { hit: FileHit; repo: RepoSummary }) {
+  const slash = hit.path.lastIndexOf("/");
+  return (
+    <>
+      <span className="flex w-[14px] shrink-0 justify-center text-subtle">
+        <FileIcon size={13} />
+      </span>
+      <div className="min-w-0 flex-1 truncate text-[13px]">
+        <span className="font-medium text-fg">{hit.path.slice(slash + 1)}</span>
+        {slash > 0 && <span className="ml-2 font-mono text-[11px] text-subtle">{hit.path.slice(0, slash)}</span>}
+      </div>
+      <span className="shrink-0 truncate text-[11px] text-subtle">{repo.name}</span>
     </>
   );
 }

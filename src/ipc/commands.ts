@@ -5,10 +5,15 @@ import type {
   Actions,
   AuthStatus,
   DeviceCode,
+  FileContent,
+  FileEntry,
   Language,
+  PaletteResults,
+  RefList,
   Readme,
   RepoSummary,
   SyncStatus,
+  TreeInfo,
 } from "./types";
 
 export const appReady = () => invoke<number>("app_ready");
@@ -30,8 +35,9 @@ export const repoSetPinned = (id: number, pinned: boolean) =>
 
 export const openExternal = (url: string) => invoke<void>("open_external", { url });
 
-/** Repo ids, best match first. */
-export const paletteSearch = (q: string, limit?: number) => invoke<number[]>("palette_search", { q, limit });
+/** Repo ids and file paths (default branches), best match first. */
+export const paletteSearch = (q: string, limit?: number, fileLimit?: number) =>
+  invoke<PaletteResults>("palette_search", { q, limit, fileLimit });
 
 export const readmeGet = (repoId: number) => invoke<Readme | null>("readme_get", { repoId });
 export const readmeRefresh = (repoId: number) => invoke<Readme | null>("readme_refresh", { repoId });
@@ -46,3 +52,15 @@ export const actionsDispatch = (
   gitRef: string,
   inputs: Record<string, string | boolean>,
 ) => invoke<void>("actions_dispatch", { repoId, workflowId, gitRef, inputs });
+
+/** Cached branches/tags (SQLite only). */
+export const refsGet = (repoId: number) => invoke<RefList>("refs_get", { repoId });
+/** Revalidates branches/tags (at most once a minute unless forced). */
+export const refsRefresh = (repoId: number, force?: boolean) => invoke<RefList>("refs_refresh", { repoId, force });
+/** Makes sure a tree is cached: one request the first time, none after. */
+export const filesTree = (repoId: number, treeSha: string) => invoke<TreeInfo>("files_tree", { repoId, treeSha });
+export const filesDir = (treeSha: string, dir: string) => invoke<FileEntry[]>("files_dir", { treeSha, dir });
+export const filesLookup = (treeSha: string, path: string) =>
+  invoke<FileEntry | null>("files_lookup", { treeSha, path });
+export const fileGet = (repoId: number, sha: string, path: string, size?: number | null) =>
+  invoke<FileContent>("file_get", { repoId, sha, path, size: size ?? undefined });

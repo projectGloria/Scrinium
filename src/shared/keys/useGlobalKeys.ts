@@ -1,7 +1,7 @@
 // Global keyboard map. Lists register what they need here; one window listener dispatches.
 //
 //   Ctrl/Cmd+K  command palette        Ctrl/Cmd+P  repo switcher (with filters)
-//   g r         repo switcher          g d / g a   README / Actions of the open repo
+//   g r         repo switcher          g d / g f / g a   README / Files / Actions of the open repo
 //   g i / g p   issues / PRs (M4)
 //   j / k       move in the sidebar list (arrows work too)
 //   Enter       open the highlighted repo
@@ -52,9 +52,9 @@ export function useGlobalKeys() {
         if (e.key === "r") {
           e.preventDefault();
           ui.setSwitcherOpen(true);
-        } else if ((e.key === "a" || e.key === "d") && useNav.getState().current().kind === "repo") {
+        } else if ((e.key === "a" || e.key === "d" || e.key === "f") && useNav.getState().current().kind === "repo") {
           e.preventDefault();
-          ui.setRepoTab(e.key === "a" ? "actions" : "readme");
+          ui.setRepoTab(e.key === "a" ? "actions" : e.key === "f" ? "files" : "readme");
         }
         // "i" and "p" are wired up with issues/PRs in M4.
         return;

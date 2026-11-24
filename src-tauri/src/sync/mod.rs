@@ -22,7 +22,7 @@ const REPOS_KEY: &str = "repos";
 pub struct SyncEngine {
     trigger: Notify,
     running: AtomicBool,
-    /// The icon scan runs detached from the repo sync; this keeps two from overlapping.
+    /// Icon scan + file indexing run detached from the repo sync; this keeps two from overlapping.
     icons_running: Arc<AtomicBool>,
 }
 
@@ -35,7 +35,7 @@ impl SyncEngine {
         })
     }
 
-    /// Looks for repo icons in the background (never holds up the sync status).
+    /// Looks for repo icons, then indexes file paths, in the background (never holds up the sync status).
     fn spawn_icons(&self, app: &AppHandle, db: &Arc<Db>, gh: &Arc<ReadApi>) {
         if self.icons_running.swap(true, Ordering::SeqCst) {
             return;
@@ -44,6 +44,9 @@ impl SyncEngine {
         tauri::async_runtime::spawn(async move {
             if let Err(e) = jobs::icons::run(&app, &db, &gh).await {
                 eprintln!("[icons] stopped: {e}");
+            }
+            if let Err(e) = jobs::files::index(&app, &db, &gh).await {
+                eprintln!("[files] stopped: {e}");
             }
             flag.store(false, Ordering::SeqCst);
         });

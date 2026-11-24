@@ -6,6 +6,7 @@ export function Home() {
     [<><Kbd>Ctrl</Kbd><Kbd>P</Kbd></>, "Switch repository"],
     [<><Kbd>g</Kbd><Kbd>r</Kbd></>, "Switch repository"],
     [<><Kbd>g</Kbd><Kbd>d</Kbd></>, "README of the open repo"],
+    [<><Kbd>g</Kbd><Kbd>f</Kbd></>, "Files of the open repo"],
     [<><Kbd>g</Kbd><Kbd>a</Kbd></>, "Actions of the open repo"],
     [<><Kbd>j</Kbd><Kbd>k</Kbd></>, "Move in the sidebar"],
     [<Kbd>Enter</Kbd>, "Open"],

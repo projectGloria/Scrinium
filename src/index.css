@@ -187,3 +187,13 @@ input::placeholder {
 }
 .markdown [align="center"] { text-align: center; }
 .markdown [align="right"] { text-align: right; }
+
+/* Shiki tokens carry both theme colors as variables (defaultColor: false). */
+.code-tok { color: var(--shiki-light); }
+[data-theme="dark"] .code-tok { color: var(--shiki-dark); }
+.code-lines { tab-size: 4; }
+.checker {
+  background-color: var(--bg);
+  background-image: conic-gradient(var(--bg-hover) 25%, transparent 0 50%, var(--bg-hover) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}

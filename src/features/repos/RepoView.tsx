@@ -6,6 +6,7 @@ import { BranchIcon, ClockIcon, ForkIcon, IssueIcon, PinIcon, PrIcon, StarIcon }
 import { useUi, type RepoTab } from "../../stores/ui";
 import { Readme } from "../readme/Readme";
 import { ActionsPanel } from "../actions/ActionsPanel";
+import { FilesPanel } from "../files/FilesPanel";
 import { RepoGlyph } from "./RepoGlyph";
 
 export function RepoView({ repoId }: { repoId: number }) {
@@ -27,9 +28,11 @@ export function RepoView({ repoId }: { repoId: number }) {
     );
   }
 
+  // The Files tab fills the window height (tree and viewer scroll on their own); the others scroll the page.
+  const fill = tab === "files";
   return (
-    <div className="min-w-0 flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-[920px] px-8 py-6">
+    <div className={`min-w-0 flex-1 overflow-y-auto ${fill ? "flex flex-col" : ""}`}>
+      <div className={`mx-auto w-full px-8 ${fill ? "flex min-h-[560px] max-w-[1280px] flex-1 flex-col pb-4 pt-6" : "max-w-[920px] py-6"}`}>
         <div className="flex items-start gap-3">
           {repo.iconSha && <RepoGlyph repo={repo} size={29} />}
           <div className="min-w-0 flex-1">
@@ -82,9 +85,15 @@ export function RepoView({ repoId }: { repoId: number }) {
         {langs && langs.length > 0 && <LanguageBar langs={langs} />}
 
         <Tabs />
-        <div className="mt-5">
-          {tab === "readme" ? <Readme repo={repo} /> : <ActionsPanel repo={repo} />}
-        </div>
+        {fill ? (
+          <div className="mt-4 flex min-h-0 flex-1 flex-col">
+            <FilesPanel repo={repo} />
+          </div>
+        ) : (
+          <div className="mt-5">
+            {tab === "readme" ? <Readme repo={repo} /> : <ActionsPanel repo={repo} />}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -95,6 +104,7 @@ function Tabs() {
   const setTab = useUi((s) => s.setRepoTab);
   const items: [RepoTab, string, string][] = [
     ["readme", "README", "g d"],
+    ["files", "Files", "g f"],
     ["actions", "Actions", "g a"],
   ];
   return (

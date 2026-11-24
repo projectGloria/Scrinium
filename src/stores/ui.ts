@@ -3,7 +3,7 @@ import type { SyncStatus } from "../ipc/types";
 import { applyTheme, loadThemePref, saveThemePref, type ThemePref } from "../shared/theme";
 
 export type Tri = "all" | "only" | "hide";
-export type RepoTab = "readme" | "actions";
+export type RepoTab = "readme" | "files" | "actions";
 export interface RunTarget {
   repoId: number;
   workflowId: number;

@@ -22,8 +22,8 @@ use serde_json::json;
 use crate::error::{Error, Result};
 use http::{Conditional, Http};
 use model::{
-    ContentFile, GitBlob, RepoDirsData, ReposPage, RunList, TreeObj, User, ViewerReposData,
-    WorkflowFilesData, WorkflowList,
+    ContentFile, GitBlob, GitTree, RepoDirsData, RepoRefs, RepoRefsData, ReposPage, RunList, TreeObj, User,
+    ViewerReposData, WorkflowFilesData, WorkflowList,
 };
 
 pub use write::WriteApi;
@@ -95,6 +95,20 @@ impl ReadApi {
         let b: GitBlob =
             self.http.get_json(&format!("/repos/{}/{}/git/blobs/{}", seg(owner), seg(name), seg(sha))).await?;
         decode_content(&b.content, &b.encoding)
+    }
+
+    /// Branches and tags (100 most recent of each), peeled to their commit and root tree.
+    pub async fn repo_refs(&self, owner: &str, name: &str) -> Result<Option<RepoRefs>> {
+        let vars = json!({ "owner": owner, "name": name });
+        let data: RepoRefsData = graphql::run(&self.http, &graphql::REPO_REFS, vars).await?;
+        Ok(data.repository)
+    }
+
+    /// A whole tree, recursively. Trees are immutable, so callers fetch each SHA once.
+    pub async fn git_tree(&self, owner: &str, name: &str, sha: &str) -> Result<GitTree> {
+        self.http
+            .get_json(&format!("/repos/{}/{}/git/trees/{}?recursive=1", seg(owner), seg(name), seg(sha)))
+            .await
     }
 
     /// Lists the directories where repos usually keep their icon/logo, in one request.

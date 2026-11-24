@@ -20,7 +20,7 @@ query ViewerRepos($cursor: String, $first: Int!) {
         isPrivate
         isFork
         isArchived
-        defaultBranchRef { name }
+        defaultBranchRef { name target { ... on Commit { tree { oid } } } }
         stargazerCount
         forkCount
         issues(states: OPEN) { totalCount }

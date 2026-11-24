@@ -100,6 +100,12 @@ fn to_row(n: RepoNode) -> Option<RepoRow> {
         is_private: n.is_private,
         is_fork: n.is_fork,
         is_archived: n.is_archived,
+        default_tree_sha: n
+            .default_branch_ref
+            .as_ref()
+            .and_then(|b| b.target.as_ref())
+            .and_then(|t| t.tree.as_ref())
+            .map(|t| t.oid.clone()),
         default_branch: n.default_branch_ref.map(|b| b.name),
         stars: n.stargazer_count,
         forks: n.fork_count,

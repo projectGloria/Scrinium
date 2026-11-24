@@ -15,6 +15,38 @@ const base = (size = 14): SVGProps<SVGSVGElement> => ({
   "aria-hidden": true,
 });
 
+export const FileIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M4 1.75h5.25L12.5 5v9.25H4z" />
+    <path d="M9 1.75V5.25h3.5" />
+  </svg>
+);
+export const FolderIcon = ({ size, open, ...p }: P & { open?: boolean }) => (
+  <svg {...base(size)} {...p}>
+    {open ? (
+      <path d="M1.75 4V3.25h4l1.5 1.5h6v2M1.75 4v8.75h10.5l2-6h-10.5l-2 6" />
+    ) : (
+      <path d="M1.75 3.25h4l1.5 1.5h7v8h-12.5z" />
+    )}
+  </svg>
+);
+export const ChevronIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="m6 4 4 4-4 4" />
+  </svg>
+);
+export const TagIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M2 2.5v4.25l7 7 4.5-4.5-7-7H2z" />
+    <circle cx="5" cy="5.25" r="0.9" />
+  </svg>
+);
+export const SubmoduleIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M1.75 3.25h4l1.5 1.5h7v8h-12.5z" />
+    <path d="M6 9h4M8.5 7.5 10 9l-1.5 1.5" />
+  </svg>
+);
 export const RepoIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
     <path d="M3.5 2.5h8.5v9H4.75a1.25 1.25 0 0 0 0 2.5H12" />

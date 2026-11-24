@@ -48,7 +48,7 @@ pub struct RepoNode {
     pub is_private: bool,
     pub is_fork: bool,
     pub is_archived: bool,
-    pub default_branch_ref: Option<Named>,
+    pub default_branch_ref: Option<BranchRef>,
     pub stargazer_count: i64,
     pub fork_count: i64,
     pub issues: Count,
@@ -75,6 +75,27 @@ pub struct Nodes<T> {
 #[derive(Debug, Deserialize)]
 pub struct TopicNode {
     pub topic: Named,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BranchRef {
+    pub name: String,
+    pub target: Option<CommitTarget>,
+}
+
+/// A ref target. Annotated tags point at a `Tag` whose own `target` is the commit.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitTarget {
+    pub oid: Option<String>,
+    pub tree: Option<Oid>,
+    pub committed_date: Option<String>,
+    pub target: Option<Box<CommitTarget>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Oid {
+    pub oid: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -239,4 +260,48 @@ pub struct RunDto {
 #[derive(Debug, Deserialize)]
 pub struct Actor {
     pub login: String,
+}
+
+// ── Branches, tags, trees ─────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct RepoRefsData {
+    pub repository: Option<RepoRefs>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RepoRefs {
+    pub branches: RefConnection,
+    pub tags: RefConnection,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefConnection {
+    pub total_count: i64,
+    pub nodes: Vec<Option<RefNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RefNode {
+    pub name: String,
+    pub target: Option<CommitTarget>,
+}
+
+/// `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1`.
+#[derive(Debug, Deserialize)]
+pub struct GitTree {
+    #[serde(default)]
+    pub truncated: bool,
+    pub tree: Vec<GitTreeItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GitTreeItem {
+    pub path: String,
+    pub mode: Option<String>,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub sha: String,
+    pub size: Option<i64>,
 }

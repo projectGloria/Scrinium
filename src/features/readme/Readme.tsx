@@ -1,19 +1,13 @@
 // README of the default branch. Cached copy renders at once; a conditional request (ETag)
 // revalidates it in the background and swaps it in only if it changed.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import * as ipc from "../../ipc/commands";
 import type { Readme as ReadmeData, RepoSummary } from "../../ipc/types";
-import { blobUrl } from "../../shared/blobUrl";
-
-type Renderer = typeof import("../../shared/markdown/render");
-let renderer: Promise<Renderer> | null = null;
-const loadRenderer = () => (renderer ??= import("../../shared/markdown/render"));
+import { loadRenderer, MarkdownBody } from "../../shared/markdown/MarkdownBody";
 
 /** Rendered HTML by repo + blob sha, so switching back to a repo doesn't re-render. */
 const htmlCache = new Map<string, string>();
 const HTML_CACHE_MAX = 24;
-/** Resolved README images: "repoId:path" -> blob sha (null = not in the repo). */
-const assetCache = new Map<string, string | null>();
 
 /** Warms the README for a repo the user is likely to open next (sidebar cursor). */
 export function prefetchReadme(repoId: number) {
@@ -30,7 +24,6 @@ type State =
 export function Readme({ repo }: { repo: RepoSummary }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [refreshing, setRefreshing] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -78,46 +71,6 @@ export function Readme({ repo }: { repo: RepoSummary }) {
     };
   }, [repo.id, repo.owner, repo.name, repo.defaultBranch, repo.htmlUrl]);
 
-  // Point repo-relative images at cached blobs (fetched through Rust on first view).
-  const html = state.kind === "ready" ? state.html : null;
-  useLayoutEffect(() => {
-    const root = ref.current;
-    if (!root || !html) return;
-    let alive = true;
-    root.querySelectorAll<HTMLImageElement | HTMLSourceElement>("[data-repo-path]").forEach((el) => {
-      const path = el.dataset.repoPath!;
-      const key = `${repo.id}:${path}`;
-      const apply = (sha: string | null) => {
-        if (!alive || !sha) return;
-        if (el instanceof HTMLSourceElement) el.srcset = blobUrl(sha);
-        else el.src = blobUrl(sha);
-      };
-      if (assetCache.has(key)) return apply(assetCache.get(key)!);
-      void ipc
-        .repoAsset(repo.id, path)
-        .then((sha) => {
-          assetCache.set(key, sha);
-          apply(sha);
-        })
-        .catch(() => {});
-    });
-    return () => {
-      alive = false;
-    };
-  }, [html, repo.id]);
-
-  const onClick = (e: React.MouseEvent) => {
-    const a = (e.target as HTMLElement).closest("a");
-    if (!a) return;
-    e.preventDefault();
-    const href = a.getAttribute("href") ?? "";
-    if (href.startsWith("#")) {
-      ref.current?.querySelector(`[id="${CSS.escape(href.slice(1))}"]`)?.scrollIntoView({ block: "start" });
-    } else if (/^https?:\/\//i.test(href)) {
-      void ipc.openExternal(href);
-    }
-  };
-
   if (state.kind === "loading") {
     // Only reached when nothing is cached yet.
     return <Placeholder>{refreshing ? "Fetching README…" : ""}</Placeholder>;
@@ -130,7 +83,7 @@ export function Readme({ repo }: { repo: RepoSummary }) {
       <div className="mb-3 flex items-center gap-2 text-[11.5px] text-subtle">
         <span className="font-mono">{state.readme.path}</span>
       </div>
-      <div ref={ref} className="markdown" onClick={onClick} dangerouslySetInnerHTML={{ __html: state.html }} />
+      <MarkdownBody html={state.html} repoId={repo.id} />
     </div>
   );
 }
